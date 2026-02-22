@@ -17,7 +17,7 @@ export class AudioRecording {
 
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
-    public static defaultRecordingDuration = 3000;
+    public static defaultRecordingDuration = 2000;
     public static stopWaitingRecordDuration = 600;
     public static recordDuration = AudioRecording.defaultRecordingDuration;
     private logger = new InternalLogger(__filename);
@@ -59,7 +59,7 @@ export class AudioRecording {
         await this.audioMutex.acquire();
         try {
             let outputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
-            let ai = portAudio.AudioIO({
+            let audioIo = portAudio.AudioIO({
                 inOptions: {
                     channelCount: 1,
                     sampleFormat: portAudio.SampleFormat16Bit,
@@ -73,11 +73,11 @@ export class AudioRecording {
                 sampleRate: AudioRecording.sampleRate,
                 bitDepth: 16
             });
-            ai.pipe(wavFileWriter);
-            ai.start();
+            audioIo.pipe(wavFileWriter);
+            audioIo.start();
             setTimeout(() => {
                 this.audioMutex.release();
-                this.stopRecording(outputFileName, wavFileWriter, ai)
+                this.stopRecording(outputFileName, wavFileWriter, audioIo)
             }, AudioRecording.recordDuration);
         } catch (error) {
             this.audioMutex.release();
