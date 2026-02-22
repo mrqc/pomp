@@ -1,0 +1,4 @@
+serverName: UUID
+showLogo: true
+dependencyInitializationTimeout: 2000
+exitOnFatalError: false

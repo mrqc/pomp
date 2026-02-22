@@ -1,0 +1,68 @@
+{
+  "name": "pomp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "start": " npx vite build && npx tsx src/index.ts",
+    "build": "tsc",
+    "dev": "npm run start"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts"
+    ],
+    "themes": [
+      "./themes"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.2.3",
+    "@types/wav": "^1.0.4",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-node-polyfills": "^0.25.0"
+  },
+  "dependencies": {
+    "@deepstream/client": "^7.0.5",
+    "@deepstream/server": "^10.0.0",
+    "@mariozechner/pi-agent-core": "^0.52.12",
+    "@mariozechner/pi-ai": "^0.52.12",
+    "@mariozechner/pi-coding-agent": "^0.52.12",
+    "@types/node-wav": "^0.0.4",
+    "buffer": "^6.0.3",
+    "chokidar": "^5.0.0",
+    "es-toolkit": "^1.44.0",
+    "express": "^5.2.1",
+    "fs-extra": "^11.3.3",
+    "kokoro-js": "^1.2.1",
+    "lit": "^3.3.2",
+    "mic": "^2.1.2",
+    "naudiodon-no-segfault": "^2.4.2",
+    "node-mic-record": "^0.0.1",
+    "node-record-lpcm16": "^1.0.1",
+    "node-wav": "^0.0.2",
+    "node-wav-player": "^1.0.0",
+    "nodejs-whisper": "^0.2.9",
+    "sqlite3": "^5.1.7",
+    "typescript-logging": "^2.2.0",
+    "typescript-logging-category-style": "^2.2.0",
+    "uuidv7": "^1.1.0",
+    "wav": "^1.0.2",
+    "wav-encoder": "^1.3.0"
+  }
+}
