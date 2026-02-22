@@ -7,17 +7,12 @@ import type {Message, TextContent} from "@mariozechner/pi-ai/dist/types";
 import {uuidv7} from "uuidv7";
 import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {DatabaseConnector} from "./DatabaseConnector.ts";
+import {Controller} from "./Controller.ts";
 
-export class InternalAgentSession {
-    
-    private agentSession: AgentSession;
-    private timestamp: number;
-
-    constructor(agentSession: AgentSession, timestamp: number) {
-        this.agentSession = agentSession;
-        this.timestamp = timestamp;
-    }
-    
+interface InternalAgentSession {
+    id: string;
+    agentSession: AgentSession;
+    timestamp: number;
 }
 
 interface ExternalAgentSession {
@@ -35,24 +30,21 @@ interface ExternalAgentMessage {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AgentsController {
+export class AgentsController extends Controller {
     private logger = new InternalLogger(__filename);
     private internalAgentSessions: InternalAgentSession[] = [];
     private externalAgentSessions: ExternalAgentSession[] = [];
     private textToSpeech: TextToSpeech;
-    private clientServerSynchronization: ClientServerSynchronization;
     private authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
-    private databaseConnector: DatabaseConnector;
 
     private loader = new DefaultResourceLoader({
         cwd: process.cwd(),
     });
 
     constructor(textToSpeech: TextToSpeech, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
+        super(clientServerSynchronization, databaseConnector, "AgentsController");
         this.textToSpeech = textToSpeech;
-        this.clientServerSynchronization = clientServerSynchronization;
-        this.databaseConnector = databaseConnector;
     }
 
     async init() {
@@ -90,10 +82,11 @@ export class AgentsController {
     }
     
     private addSession(session: AgentSession, text: string) {
-        let internalSession = new InternalAgentSession(
-            session,
-            Date.now()
-        );
+        let internalSession = {
+            id: uuidv7().toString(),
+            agentSession: session,
+            timestamp: Date.now()
+        };
         this.internalAgentSessions.push(internalSession);
         let externalSession = {
             id: uuidv7().toString(),
@@ -130,6 +123,5 @@ export class AgentsController {
                 models: provider.models
             });
         }
-        
     }
 }

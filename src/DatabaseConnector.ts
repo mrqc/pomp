@@ -20,8 +20,10 @@ export class DatabaseConnector {
     public async migrate() {
         await this.database.exec(`
             create table if not exists Configuration (
-                name varchar (40) primary key, 
-                value text not null
+                recordName varchar (40), 
+                variableName varchar (40), 
+                value text not null,
+                primary key (recordName, variableName)
             )
         `);
 
@@ -54,17 +56,17 @@ export class DatabaseConnector {
                 unique(llmProviderId, modelId)
             )
         `);
-        
-        await this.ensureIntConfig('RecordingSampleRate', 16000); //SAMPLE_RATE
-        await this.ensureIntConfig('DefaultRecordingDuration', 3000); //DEFAULT_RECORD_DURATION
-        await this.ensureIntConfig('StopWaitingRecordDuration', 600); //STOP_WAITING_RECORD_DURATION
-        await this.ensureIntConfig('SecondsToLooseText', 10); //SECONDS_TO_LOOSE_TEXT
-        await this.ensureStringConfig('WhisperModelName', 'small.en');
-        await this.ensureBoolConfig('WhisperWithCuda', true);
-        await this.ensureIntConfig('WhisperTimestampsLength', 2);
-        await this.ensureBoolConfig('WhisperSplitOnWord', false);
-        await this.ensureBoolConfig('WhisperTranslateToEnglish', false);
-        await this.ensureFloatConfig('KokoroTTSSpeed', 1.4);
+
+        await this.ensureIntConfig('AudioRecording', 'sampleRate', 16000);
+        await this.ensureIntConfig('AudioRecording', 'defaultRecordingDuration', 3000);
+        await this.ensureIntConfig('AudioRecording', 'stopWaitingRecordDuration', 600);
+        await this.ensureIntConfig('SpeechToText', 'secondsToLooseText', 10);
+        await this.ensureStringConfig('SpeechToText', 'activationKeywords', "buddy");
+        await this.ensureStringConfig('SpeechToText', 'modelName', 'small.en');
+        await this.ensureBoolConfig('SpeechToText', 'splitOnWord', false);
+        await this.ensureBoolConfig('SpeechToText', 'translateToEnglish', false);
+        await this.ensureFloatConfig('TextToSpeech', 'textSpeed', 1.4);
+        await this.ensureStringConfig('TextToSpeech', 'modelId', 'onnx-community/Kokoro-82M-v1.0-ONNX');
     }
     
     public async getLLMProvider(): Promise<any[] | null> {
@@ -106,13 +108,14 @@ export class DatabaseConnector {
         });
     }
     
-    public async getConfig(name: string): Promise<any> {
+    public async getConfig(recordName: string, variableName: string): Promise<any> {
         return new Promise((resolve, reject) => {
             this.database.get(
                 `select value 
                     from Configuration 
-                    where name = ?`,
-                [name],
+                    where variableName = ?
+                        and recordName = ?`,
+                [variableName, recordName],
                 (error: string, row: { value: unknown; }) => {
                     if (error) {
                         this.logger.error("Error fetching config: " + error);
@@ -125,52 +128,76 @@ export class DatabaseConnector {
         });
     }
     
-    private async ensureStringConfig(name: string, value: string) {
+    private async ensureStringConfig(recordName: string, variableName: string, value: string) {
         await this.database.exec(`
             insert or ignore into Configuration (
-                name,
+                recordName,
+                variableName,
                 value
             ) values (
-                '${name}',
+                '${recordName}',
+                '${variableName}',
                 '${value}'
             )
         `);
     }
 
-    private async ensureIntConfig(name: string, value: number) {
+    private async ensureIntConfig(recordName: string, variableName: string, value: number) {
         await this.database.exec(`
             insert or ignore into Configuration (
                 name,
                 value
             ) values (
-                '${name}',
+                '${recordName}',
+                '${variableName}',
                 '${value.toFixed(0)}'
             )
         `);
     }
 
-    private async ensureFloatConfig(name: string, value: number) {
+    private async ensureFloatConfig(recordName: string, variableName: string, value: number) {
         await this.database.exec(`
             insert or ignore into Configuration (
-                name,
+                recordName,
+                variableName,
                 value
             ) values (
-                '${name}',
+                '${recordName}',
+                '${variableName}',
                 '${value.toFixed(4)}'
             )
         `);
     }
 
-    private async ensureBoolConfig(name: string, value: boolean) {
+    private async ensureBoolConfig(recordName: string, variableName: string, value: boolean) {
         await this.database.exec(`
             insert or ignore into Configuration (
-                name,
+                recordName,
+                variableName,
                 value
             ) values (
-                '${name}',
+                '${recordName}',
+                '${variableName}',
                 '${value.toString()}'
             )
         `);
+    }
+
+    public async setConfig(recordName: string, variableName: string, value: any): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.database.run(
+                `insert or replace into Configuration (recordName, variableName, value) values (?, ?, ?)`,
+                [recordName, variableName, value],
+                (error: Error | null) => {
+                    if (error) {
+                        this.logger.error("Error setting config: " + error);
+                        reject(error);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
     }
 
     public close() {

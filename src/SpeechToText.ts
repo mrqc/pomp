@@ -7,6 +7,8 @@ import {fileURLToPath} from "url";
 import type {AgentsController} from "./AgentsController.ts";
 import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {AudioRecording} from "./AudioRecording.ts";
+import {Controller} from "./Controller.ts";
+import type {DatabaseConnector} from "./DatabaseConnector.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,24 +18,59 @@ interface Phrase {
     timestamp: number;
 }
 
-export class SpeechToText {
+export class SpeechToText extends Controller {
 
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
     private static secondsToLooseText = 1000 * 10;
-    private static activationKeywords = "buddy";
+    private static modelName = 'small.en';
+    private static activationKeywords = ["buddy"];
+    private static translateToEnglish: boolean = false;
+    private static splitOnWord: boolean = false;
     private logger = new InternalLogger(__filename);
     private phrases: Phrase[] = [];
     private agentsController: AgentsController;
     private isActivatedByKeyword: boolean = false;
-    private clientServerSynchronization: ClientServerSynchronization;
     
     constructor(agentsController: AgentsController,
-                clientServerSynchronization: ClientServerSynchronization) {
+                clientServerSynchronization: ClientServerSynchronization,
+                databaseConnector: DatabaseConnector) {
+        super(clientServerSynchronization, databaseConnector, "SpeechToText");
         SpeechToText.cleanup();
         this.agentsController = agentsController;
-        this.clientServerSynchronization = clientServerSynchronization;
     }
     
+    async init() {
+        await this.loadConfigsAndSubscribe();
+    }
+
+    private async loadConfigsAndSubscribe() {
+        SpeechToText.secondsToLooseText = await this.getControllerRecordConfiguration("secondsToLooseText");
+        SpeechToText.activationKeywords = await this.getControllerRecordConfiguration("activationKeywords");
+        SpeechToText.modelName = await this.getControllerRecordConfiguration("modelName");
+        SpeechToText.translateToEnglish = await this.getControllerRecordConfiguration("translateToEnglish");
+        SpeechToText.splitOnWord = await this.getControllerRecordConfiguration("splitOnWord");
+        this.subscribeControllerRecord("secondsToLooseText", async (value: any) => {
+            SpeechToText.secondsToLooseText = value * 1000;
+            await this.setControllerRecordConfiguration("secondsToLooseText", value);
+        });
+        this.subscribeControllerRecord("activationKeywords", async (value: any) => {
+            SpeechToText.activationKeywords = value.split(",").map((aKeyword: string) => aKeyword.trim());
+            await this.setControllerRecordConfiguration("activationKeywords", value);
+        });
+        this.subscribeControllerRecord("modelName", async (value: any) => {
+            SpeechToText.modelName = value;
+            await this.setControllerRecordConfiguration("modelName", value);
+        });
+        this.subscribeControllerRecord("translateToEnglish", async (value: any) => {
+            SpeechToText.modelName = value;
+            await this.setControllerRecordConfiguration("translateToEnglish", value);
+        });
+        this.subscribeControllerRecord("splitOnWord", async (value: any) => {
+            SpeechToText.modelName = value;
+            await this.setControllerRecordConfiguration("splitOnWord", value);
+        });
+    }
+
     async writeAudioFileToTextStream(outputFileName: string) {
         fs.ensureDirSync(SpeechToText.TRANSLATION_DIR);
         await this.transformSpeechToIntermediaryOutput(outputFileName)
@@ -117,9 +154,8 @@ export class SpeechToText {
     }
     
     public currentStreamTextContainsActivationKeyword(): boolean {
-        return this.getCurrentStreamText()
-            .toLowerCase()
-            .includes(SpeechToText.activationKeywords);
+        const streamText = this.getCurrentStreamText().toLowerCase();
+        return SpeechToText.activationKeywords.some(keyword => streamText.includes(keyword.toLowerCase()));
     }
     
     public getCurrentStreamText(): string {
@@ -129,9 +165,9 @@ export class SpeechToText {
     
     private async transformSpeechToIntermediaryOutput(outputFileName: string) {
         try {
-            let x = await nodewhisper(outputFileName, {
-                modelName: 'small.en',
-                autoDownloadModelName: 'small.en',
+            await nodewhisper(outputFileName, {
+                modelName: SpeechToText.modelName,
+                autoDownloadModelName: SpeechToText.modelName,
                 removeWavFileAfterTranscription: true,
                 withCuda: true,
                 logger: new class implements Logger {
@@ -158,10 +194,10 @@ export class SpeechToText {
                     outputInText: false,
                     outputInVtt: false,
                     outputInWords: false,
-                    translateToEnglish: false,
+                    translateToEnglish: SpeechToText.translateToEnglish,
                     wordTimestamps: false,
                     timestamps_length: 10,
-                    splitOnWord: false,
+                    splitOnWord: SpeechToText.splitOnWord,
                 },
             });
         } catch (error) {

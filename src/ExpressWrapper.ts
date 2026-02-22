@@ -3,15 +3,22 @@ import express, {type Request, type Response} from "express";
 import {InternalLogger} from "./LogConfig.ts";
 import {fileURLToPath} from "url";
 import path from "node:path";
+import {Controller} from "./Controller.ts";
+import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
+import type {DatabaseConnector} from "./DatabaseConnector.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class ExpressWrapper {
+export class ExpressWrapper extends Controller {
     private port = 4000;
     private app = express();
     private logger = new InternalLogger(__filename);
     
+    constructor(clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
+        super(clientServerSynchronization, databaseConnector, "ExpressWrapper");
+    }
+
     init() {
         this.app.use(express.static(path.join(process.cwd(), 'frontend/public')));
 

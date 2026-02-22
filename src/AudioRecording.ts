@@ -9,11 +9,14 @@ import {fileURLToPath} from "url";
 import {SpeechToText} from "./SpeechToText.ts";
 import {Mutex} from "es-toolkit";
 import {InternalLogger} from "./LogConfig.ts";
+import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
+import {Controller} from "./Controller.ts";
+import type {DatabaseConnector} from "./DatabaseConnector.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AudioRecording {
+export class AudioRecording extends Controller {
 
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
@@ -24,7 +27,8 @@ export class AudioRecording {
     private speechToText: SpeechToText;
     private audioMutex: Mutex;
 
-    constructor(audioMutex: Mutex, speechToText: SpeechToText) {
+    constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
+        super(clientServerSynchronization, databaseConnector, "AudioRecording");
         AudioRecording.cleanup();
         this.workerOnMessage = this.workerOnMessage.bind(this);
         this.workerError = this.workerError.bind(this);
@@ -36,6 +40,29 @@ export class AudioRecording {
         this.initWorker();
     }
     
+    async init() {
+        await this.loadConfigsAndSubscribe();
+    }
+
+    private async loadConfigsAndSubscribe() {
+        AudioRecording.sampleRate = await this.getControllerRecordConfiguration("sampleRate");
+        AudioRecording.defaultRecordingDuration = await this.getControllerRecordConfiguration("defaultRecordingDuration");
+        AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordConfiguration("stopWaitingRecordDuration");
+
+        this.subscribeControllerRecord("sampleRate", async (value: any) => {
+            AudioRecording.sampleRate = value;
+            await this.setControllerRecordConfiguration("sampleRate", value);
+        });
+        this.subscribeControllerRecord("defaultRecordingDuration", async (value: any) => {
+            AudioRecording.defaultRecordingDuration = value;
+            await this.setControllerRecordConfiguration("defaultRecordingDuration", value);
+        });
+        this.subscribeControllerRecord("stopWaitingRecordDuration", async (value: any) => {
+            AudioRecording.stopWaitingRecordDuration = value;
+            await this.setControllerRecordConfiguration("stopWaitingRecordDuration", value);
+        });
+    }
+
     private initWorker() {
         const audioRecordingsWorker = new Worker(path.resolve(__dirname, 'AudioRecordingWorker.ts'));
         audioRecordingsWorker.postMessage("Start");

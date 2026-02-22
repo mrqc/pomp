@@ -22,17 +22,17 @@ let databaseConnector = new DatabaseConnector();
 logger.info("Starting client/server synchronization")
 let clientServerSynchronization = new ClientServerSynchronization();
 logger.info("Starting express")
-let express: ExpressWrapper = new ExpressWrapper()
+let express: ExpressWrapper = new ExpressWrapper(clientServerSynchronization, databaseConnector)
 logger.info("Starting text to speech")
-let textToSpeech: TextToSpeech = new TextToSpeech();
+let textToSpeech: TextToSpeech = new TextToSpeech(clientServerSynchronization, databaseConnector);
 logger.info("Agents controller starting")
 let agentsController: AgentsController = new AgentsController(textToSpeech, clientServerSynchronization, databaseConnector);
 logger.info("Starting audio playing")
-let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex);
+let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex, clientServerSynchronization, databaseConnector);
 logger.info("Starting speech to text")
-let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization);
+let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector);
 logger.info("Starting audio recording")
-let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText);
+let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, clientServerSynchronization, databaseConnector);
 
 logger.info("Starting environment...")
 
@@ -44,13 +44,17 @@ async function startup() {
     logger.info("Agents controller initializing")
     await agentsController.init();
     logger.info("Audio recording")
-    audioRecording.startRecording();
+    await audioRecording.init();
     logger.info("Audio playing")
     audioPlaying.init();
     logger.info("Text to speech")
     await textToSpeech.init();
     logger.info("Client/Server synchronization initializing")
     await clientServerSynchronization.init();
+    logger.info("Speech to text initializing");
+    await speechToText.init();
+
+    audioRecording.startRecording();
     textToSpeech.say("Hello!");
 }
 

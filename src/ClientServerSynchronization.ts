@@ -14,7 +14,7 @@ export class ClientServerSynchronization {
     private logger = new InternalLogger(__filename);
 
     constructor() {
-        this.logger.info("Starting Deepstream server...");
+        this.logger.info("Starting stream server...");
         this.server.start();
     }
     
@@ -32,6 +32,15 @@ export class ClientServerSynchronization {
             });
         } catch (error) {
             this.logger.error("Error setting value '" + value + "' for variable " + variableName + " on record " + recordName + ": " + error)
+        }
+    }
+    
+    subscribe(recordName: string, variableName: string, callback: (value: any) => void) {
+        try {
+            let record = this.client.record.getRecord(recordName);
+            record.subscribe(variableName, callback);
+        } catch (error) {
+            this.logger.error("Error subscribing to variable " + variableName + " on record " + recordName + ": " + error)
         }
     }
 }

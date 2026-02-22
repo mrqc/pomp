@@ -5,6 +5,9 @@ import wavPlayer from 'node-wav-player';
 import type {Mutex} from "es-toolkit";
 import {fileURLToPath} from "url";
 import {InternalLogger} from "./LogConfig.ts";
+import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
+import {Controller} from "./Controller.ts";
+import type {DatabaseConnector} from "./DatabaseConnector.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +17,7 @@ interface AudioFile {
     timestamp: number;
 }
 
-export class AudioPlaying {
+export class AudioPlaying extends Controller {
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'audio-outputs');
     private audioMutex: Mutex;
     private queue: AudioFile[] = [];
@@ -22,7 +25,8 @@ export class AudioPlaying {
     private watcher: any;
     private logger = new InternalLogger(__filename);
 
-    constructor(audioMutex: Mutex) {
+    constructor(audioMutex: Mutex, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
+        super(clientServerSynchronization, databaseConnector, "AudioPlaying");
         this.audioMutex = audioMutex;
     }
     
@@ -39,7 +43,7 @@ export class AudioPlaying {
             usePolling: true,
         });
         this.watcher.on('add', async (filePath: string) => {
-            this.logger.info("File added: " + filePath)
+            this.logger.info(`File added: ${filePath}`)
             await this.onFileAdded(filePath);
         });
     }
