@@ -145,7 +145,8 @@ export class DatabaseConnector {
     private async ensureIntConfig(recordName: string, variableName: string, value: number) {
         await this.database.exec(`
             insert or ignore into Configuration (
-                name,
+                recordName,
+                variableName,
                 value
             ) values (
                 '${recordName}',

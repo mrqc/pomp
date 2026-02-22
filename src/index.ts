@@ -10,6 +10,7 @@ import {AgentsController} from "./AgentsController.ts";
 import {InternalLogger} from "./LogConfig.ts";
 import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {DatabaseConnector} from "./DatabaseConnector.ts";
+import {Configuration} from "./Configuration.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,11 +19,12 @@ let logger = new InternalLogger(__filename);
 
 const audioMutex = new Mutex();
 logger.info("Starting database connector")
+let configuration = new Configuration();
 let databaseConnector = new DatabaseConnector();
 logger.info("Starting client/server synchronization")
 let clientServerSynchronization = new ClientServerSynchronization();
 logger.info("Starting express")
-let express: ExpressWrapper = new ExpressWrapper(clientServerSynchronization, databaseConnector)
+let express: ExpressWrapper = new ExpressWrapper(clientServerSynchronization, databaseConnector, configuration)
 logger.info("Starting text to speech")
 let textToSpeech: TextToSpeech = new TextToSpeech(clientServerSynchronization, databaseConnector);
 logger.info("Agents controller starting")
