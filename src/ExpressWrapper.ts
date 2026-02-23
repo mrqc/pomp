@@ -23,7 +23,7 @@ export class ExpressWrapper extends Controller {
     }
 
     init() {
-        this.port = this.configuration.getConfig("webPort")
+        this.port = this.configuration.getConfig("web-port")
         this.app.use(express.static(path.join(process.cwd(), 'frontend/public')));
 
         this.app.get('/', async (req: Request, res: Response) => {

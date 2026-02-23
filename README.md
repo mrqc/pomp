@@ -1,5 +1,7 @@
 # POMP — Voice Dialog Personal Assistant
 
+## What is POMP?
+
 *POMP* is a headless (first) assistant run by voice. It is my vision of the future interaction with AI agents.
 POMP is there without seeing it. There is (at first) no GUI but controlled by your voice. This headless approach
 is an enabler to integrate AI seamless into our daily life. We have to rethink our interaction with computers.
@@ -28,3 +30,11 @@ is english. There is a configuration UI available. Near future steps are:
 - Camera Vision Support
 - Screen Vision Support
 - Embedded Systems support to bring POMP to smart homes
+
+## Getting Started
+
+```bash
+npm ci # or also npm install
+npm run start
+```
+Then open http://localhost:4000 in your browser.
