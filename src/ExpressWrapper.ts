@@ -33,11 +33,11 @@ export class ExpressWrapper extends Controller {
         });
         
         const server = this.app.listen(this.port, () => {
-            console.info(`Server is running at http://localhost:${(this.port)}`);
+            this.logger.info(`Server is running at http://localhost:${(this.port)}`);
         });
 
         server.on('error', (err) => {
-            console.error('Server failed to start:', err);
+            this.logger.info(`Server failed to start: ${err}`);
         });
     }
 }

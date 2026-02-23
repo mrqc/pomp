@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
+import { ConfigurationPanel } from "./ConfigurationPanel.js";
 
-class AudioRecordingConfigurationPanel extends LitElement {
+class AudioRecordingConfigurationPanel extends ConfigurationPanel {
     static styles = css`
         :host { 
             display: block; 

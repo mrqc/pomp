@@ -56,7 +56,6 @@ export class DatabaseConnector {
                 unique(llmProviderId, modelId)
             )
         `);
-
         await this.ensureIntConfig('AudioRecording', 'sampleRate', 16000);
         await this.ensureIntConfig('AudioRecording', 'defaultRecordingDuration', 3000);
         await this.ensureIntConfig('AudioRecording', 'stopWaitingRecordDuration', 600);
