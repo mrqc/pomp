@@ -21,7 +21,7 @@ interface Phrase {
 export class SpeechToText extends Controller {
 
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
-    private static secondsToLooseText = 1000 * 10;
+    private static secondsToLooseText = 10;
     private static modelName = 'small.en';
     private static activationKeywords = ["buddy"];
     private static translateToEnglish: boolean = false;
@@ -45,32 +45,29 @@ export class SpeechToText extends Controller {
 
     private async loadConfigsAndSubscribe() {
         SpeechToText.secondsToLooseText = await this.getControllerRecordIntegerConfiguration("secondsToLooseText");
-        SpeechToText.activationKeywords = (await this.getControllerRecordStringConfiguration("activationKeywords"))
-            .split(",")
-            .map((aKeyword: string) => aKeyword.trim());
+        SpeechToText.activationKeywords = (await this.getControllerRecordStringArrayConfiguration("activationKeywords"))
         SpeechToText.modelName = await this.getControllerRecordStringConfiguration("modelName");
         SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
         SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
         this.subscribeControllerRecord("secondsToLooseText", async (value: any) => {
-            SpeechToText.secondsToLooseText = parseInt(value) * 1000;
             await this.setControllerRecordConfiguration("secondsToLooseText", value);
+            SpeechToText.secondsToLooseText = await this.getControllerRecordIntegerConfiguration("secondsToLooseText");
         });
         this.subscribeControllerRecord("activationKeywords", async (value: any) => {
-            SpeechToText.activationKeywords = value.split(",")
-                .map((aKeyword: string) => aKeyword.trim());
             await this.setControllerRecordConfiguration("activationKeywords", value);
+            SpeechToText.activationKeywords = await this.getControllerRecordStringArrayConfiguration("activationKeywords")
         });
         this.subscribeControllerRecord("modelName", async (value: any) => {
-            SpeechToText.modelName = value;
             await this.setControllerRecordConfiguration("modelName", value);
+            SpeechToText.modelName = await this.getControllerRecordStringConfiguration("modelName");
         });
         this.subscribeControllerRecord("translateToEnglish", async (value: any) => {
-            SpeechToText.translateToEnglish = JSON.parse(value);
             await this.setControllerRecordConfiguration("translateToEnglish", value);
+            SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
         });
         this.subscribeControllerRecord("splitOnWord", async (value: any) => {
-            SpeechToText.splitOnWord = JSON.parse(value);
             await this.setControllerRecordConfiguration("splitOnWord", value);
+            SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
         });
     }
 
@@ -151,7 +148,7 @@ export class SpeechToText extends Controller {
     private removeOutdatedPhrasesFromContextWindow() {
         let now = Date.now();
         for (let phraseIndex = 0; phraseIndex < this.phrases.length; phraseIndex++) {
-            if (this.phrases[phraseIndex]!.timestamp < now - SpeechToText.secondsToLooseText) {
+            if (this.phrases[phraseIndex]!.timestamp < now - SpeechToText.secondsToLooseText * 1000) {
                 this.phrases.splice(phraseIndex, 1);
                 phraseIndex--;
             }

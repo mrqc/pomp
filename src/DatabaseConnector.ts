@@ -198,6 +198,34 @@ export class DatabaseConnector {
             );
         });
     }
+
+    async getStringArrayConfig(recordName: string, variableName: string) {
+        return new Promise((resolve, reject) => {
+            this.database.get(
+                `select value
+                    from Configuration
+                    where variableName = ?
+                        and recordName = ?`,
+                [variableName, recordName],
+                (error: string, row: { value: unknown; }) => {
+                    if (error) {
+                        this.logger.error("Error fetching config: " + error);
+                        reject(error);
+                    } else {
+                        if (typeof row.value === "string") {
+                            resolve(row ? 
+                                row.value.split(",")
+                                    .map((aKeyword: string) => aKeyword.trim()) 
+                                : null);
+                        } else {
+                            reject(`Error: Value ${row.value} is not string values separated by ,`);
+                        }
+                    }
+                }
+            );
+        });
+    
+    }
     
     private async ensureStringConfig(recordName: string, variableName: string, value: string) {
         await this.database.exec(`
