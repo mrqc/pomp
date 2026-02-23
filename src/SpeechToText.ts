@@ -45,7 +45,9 @@ export class SpeechToText extends Controller {
 
     private async loadConfigsAndSubscribe() {
         SpeechToText.secondsToLooseText = await this.getControllerRecordConfiguration("secondsToLooseText");
-        SpeechToText.activationKeywords = await this.getControllerRecordConfiguration("activationKeywords");
+        SpeechToText.activationKeywords = (await this.getControllerRecordConfiguration("activationKeywords"))
+            .split(",")
+            .map((aKeyword: string) => aKeyword.trim());
         SpeechToText.modelName = await this.getControllerRecordConfiguration("modelName");
         SpeechToText.translateToEnglish = await this.getControllerRecordConfiguration("translateToEnglish");
         SpeechToText.splitOnWord = await this.getControllerRecordConfiguration("splitOnWord");
@@ -125,8 +127,10 @@ export class SpeechToText extends Controller {
     private async putTextIntoPhrases(outputFileName: string) {
         let jsonFile = outputFileName + '.json';
         const data = await fs.readJson(jsonFile);
-        await fs.remove(jsonFile);
-        await fs.remove(outputFileName);
+        if ( !InternalLogger.isDebug()) {
+            await fs.remove(jsonFile);
+            await fs.remove(outputFileName);
+        }
         let text = data.transcription.map((item: any) => item.text)
             .join(' ');
         text = this.cleanupTranscribedString(text);
@@ -168,7 +172,7 @@ export class SpeechToText extends Controller {
             await nodewhisper(outputFileName, {
                 modelName: SpeechToText.modelName,
                 autoDownloadModelName: SpeechToText.modelName,
-                removeWavFileAfterTranscription: true,
+                removeWavFileAfterTranscription: !InternalLogger.isDebug(),
                 withCuda: true,
                 logger: new class implements Logger {
                     private logger = new InternalLogger(__filename)
@@ -207,6 +211,8 @@ export class SpeechToText extends Controller {
     }
     
     public static cleanup() {
-        fs.removeSync(SpeechToText.TRANSLATION_DIR);
+        if ( !InternalLogger.isDebug()) {
+            fs.removeSync(SpeechToText.TRANSLATION_DIR);
+        }
     }
 }

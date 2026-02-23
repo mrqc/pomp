@@ -126,6 +126,8 @@ export class AudioRecording extends Controller {
     }
     
     public static cleanup() {
-        fs.removeSync(AudioRecording.RECORDINGS_DIR);
+        if ( !InternalLogger.isDebug()) {
+            fs.removeSync(AudioRecording.RECORDINGS_DIR);
+        }
     }
 }

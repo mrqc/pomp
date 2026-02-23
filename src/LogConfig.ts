@@ -16,4 +16,8 @@ export class InternalLogger {
     public debug(message: string) {
         console.log("[" + this.name + "] " + message);
     }
+    
+    public static isDebug() {
+        return false;
+    }
 }

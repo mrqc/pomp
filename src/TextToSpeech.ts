@@ -70,6 +70,8 @@ export class TextToSpeech extends Controller {
     }
     
     public static cleanup() {
-        fs.removeSync(TextToSpeech.AUDIO_DIR);
+        if ( !InternalLogger.isDebug()) {
+            fs.removeSync(TextToSpeech.AUDIO_DIR);
+        }
     }
 }
