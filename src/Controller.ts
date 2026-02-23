@@ -21,9 +21,21 @@ export class Controller {
     async setControllerRecordConfiguration(variableName: string, value: any) {
         await this.databaseConnector.setConfig(this.recordName, variableName, value);
     }
-    
-    async getControllerRecordConfiguration(variableName: string) {
-        return await this.databaseConnector.getConfig(this.recordName, variableName);
+
+    async getControllerRecordStringConfiguration(variableName: string) {
+        return await this.databaseConnector.getStringConfig(this.recordName, variableName);
+    }
+
+    async getControllerRecordIntegerConfiguration(variableName: string) {
+        return await this.databaseConnector.getIntegerConfig(this.recordName, variableName);
+    }
+
+    async getControllerRecordFloatConfiguration(variableName: string) {
+        return await this.databaseConnector.getFloatConfig(this.recordName, variableName);
+    }
+
+    async getControllerRecordBooleanConfiguration(variableName: string) {
+        return await this.databaseConnector.getBooleanConfig(this.recordName, variableName);
     }
     
 }

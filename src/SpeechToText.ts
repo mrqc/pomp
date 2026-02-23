@@ -44,19 +44,20 @@ export class SpeechToText extends Controller {
     }
 
     private async loadConfigsAndSubscribe() {
-        SpeechToText.secondsToLooseText = await this.getControllerRecordConfiguration("secondsToLooseText");
-        SpeechToText.activationKeywords = (await this.getControllerRecordConfiguration("activationKeywords"))
+        SpeechToText.secondsToLooseText = await this.getControllerRecordIntegerConfiguration("secondsToLooseText");
+        SpeechToText.activationKeywords = (await this.getControllerRecordStringConfiguration("activationKeywords"))
             .split(",")
             .map((aKeyword: string) => aKeyword.trim());
-        SpeechToText.modelName = await this.getControllerRecordConfiguration("modelName");
-        SpeechToText.translateToEnglish = await this.getControllerRecordConfiguration("translateToEnglish");
-        SpeechToText.splitOnWord = await this.getControllerRecordConfiguration("splitOnWord");
+        SpeechToText.modelName = await this.getControllerRecordStringConfiguration("modelName");
+        SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
+        SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
         this.subscribeControllerRecord("secondsToLooseText", async (value: any) => {
-            SpeechToText.secondsToLooseText = value * 1000;
+            SpeechToText.secondsToLooseText = parseInt(value) * 1000;
             await this.setControllerRecordConfiguration("secondsToLooseText", value);
         });
         this.subscribeControllerRecord("activationKeywords", async (value: any) => {
-            SpeechToText.activationKeywords = value.split(",").map((aKeyword: string) => aKeyword.trim());
+            SpeechToText.activationKeywords = value.split(",")
+                .map((aKeyword: string) => aKeyword.trim());
             await this.setControllerRecordConfiguration("activationKeywords", value);
         });
         this.subscribeControllerRecord("modelName", async (value: any) => {
@@ -64,11 +65,11 @@ export class SpeechToText extends Controller {
             await this.setControllerRecordConfiguration("modelName", value);
         });
         this.subscribeControllerRecord("translateToEnglish", async (value: any) => {
-            SpeechToText.modelName = value;
+            SpeechToText.translateToEnglish = JSON.parse(value);
             await this.setControllerRecordConfiguration("translateToEnglish", value);
         });
         this.subscribeControllerRecord("splitOnWord", async (value: any) => {
-            SpeechToText.modelName = value;
+            SpeechToText.splitOnWord = JSON.parse(value);
             await this.setControllerRecordConfiguration("splitOnWord", value);
         });
     }

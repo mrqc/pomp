@@ -107,11 +107,11 @@ export class DatabaseConnector {
         });
     }
     
-    public async getConfig(recordName: string, variableName: string): Promise<any> {
+    public async getStringConfig(recordName: string, variableName: string): Promise<any> {
         return new Promise((resolve, reject) => {
             this.database.get(
-                `select value 
-                    from Configuration 
+                `select value
+                    from Configuration
                     where variableName = ?
                         and recordName = ?`,
                 [variableName, recordName],
@@ -121,6 +121,78 @@ export class DatabaseConnector {
                         reject(error);
                     } else {
                         resolve(row ? row.value : null);
+                    }
+                }
+            );
+        });
+    }
+
+    public async getIntegerConfig(recordName: string, variableName: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.database.get(
+                `select value
+                    from Configuration
+                    where variableName = ?
+                        and recordName = ?`,
+                [variableName, recordName],
+                (error: string, row: { value: unknown; }) => {
+                    if (error) {
+                        this.logger.error("Error fetching config: " + error);
+                        reject(error);
+                    } else {
+                        if (typeof row.value === "string") {
+                            resolve(row ? parseInt(row.value) : null);
+                        } else {
+                            reject(`Error: Value ${row.value} is not an integer`);
+                        }
+                    }
+                }
+            );
+        });
+    }
+
+    public async getFloatConfig(recordName: string, variableName: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.database.get(
+                `select value
+                    from Configuration
+                    where variableName = ?
+                        and recordName = ?`,
+                [variableName, recordName],
+                (error: string, row: { value: unknown; }) => {
+                    if (error) {
+                        this.logger.error("Error fetching config: " + error);
+                        reject(error);
+                    } else {
+                        if (typeof row.value === "string") {
+                            resolve(row ? parseFloat(row.value) : null);
+                        } else {
+                            reject(`Error: Value ${row.value} is not a float`);
+                        }
+                    }
+                }
+            );
+        });
+    }
+
+    public async getBooleanConfig(recordName: string, variableName: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.database.get(
+                `select value
+                    from Configuration
+                    where variableName = ?
+                        and recordName = ?`,
+                [variableName, recordName],
+                (error: string, row: { value: unknown; }) => {
+                    if (error) {
+                        this.logger.error("Error fetching config: " + error);
+                        reject(error);
+                    } else {
+                        if (typeof row.value === "string") {
+                            resolve(row ? JSON.parse(row.value) : null);
+                        } else {
+                            reject(`Error: Value ${row.value} is not a boolean`);
+                        }
                     }
                 }
             );

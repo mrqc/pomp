@@ -45,20 +45,20 @@ export class AudioRecording extends Controller {
     }
 
     private async loadConfigsAndSubscribe() {
-        AudioRecording.sampleRate = await this.getControllerRecordConfiguration("sampleRate");
-        AudioRecording.defaultRecordingDuration = await this.getControllerRecordConfiguration("defaultRecordingDuration");
-        AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordConfiguration("stopWaitingRecordDuration");
+        AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
+        AudioRecording.defaultRecordingDuration = await this.getControllerRecordIntegerConfiguration("defaultRecordingDuration");
+        AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordIntegerConfiguration("stopWaitingRecordDuration");
 
         this.subscribeControllerRecord("sampleRate", async (value: any) => {
-            AudioRecording.sampleRate = value;
+            AudioRecording.sampleRate = parseInt(value);
             await this.setControllerRecordConfiguration("sampleRate", value);
         });
         this.subscribeControllerRecord("defaultRecordingDuration", async (value: any) => {
-            AudioRecording.defaultRecordingDuration = value;
+            AudioRecording.defaultRecordingDuration = parseInt(value);
             await this.setControllerRecordConfiguration("defaultRecordingDuration", value);
         });
         this.subscribeControllerRecord("stopWaitingRecordDuration", async (value: any) => {
-            AudioRecording.stopWaitingRecordDuration = value;
+            AudioRecording.stopWaitingRecordDuration = parseInt(value);
             await this.setControllerRecordConfiguration("stopWaitingRecordDuration", value);
         });
     }
