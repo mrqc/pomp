@@ -56,6 +56,7 @@ class TextToSpeechConfigurationPanel extends LitElement {
 
     static properties = {
         modelId: { type: String },
+        textSpeed: { type: Number },
         editing: { type: Boolean },
         tempConfig: { type: Object },
     };
@@ -63,6 +64,7 @@ class TextToSpeechConfigurationPanel extends LitElement {
     constructor() {
         super();
         this.modelId = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+        this.textSpeed = 1.0;
         this.editing = false;
         this.tempConfig = this._getCurrentConfig();
     }
@@ -70,6 +72,7 @@ class TextToSpeechConfigurationPanel extends LitElement {
     _getCurrentConfig() {
         return {
             modelId: this.modelId,
+            textSpeed: this.textSpeed,
         };
     }
 
@@ -86,11 +89,16 @@ class TextToSpeechConfigurationPanel extends LitElement {
     _saveConfig(e) {
         e.preventDefault();
         this.modelId = this.tempConfig.modelId;
+        this.textSpeed = parseFloat(this.tempConfig.textSpeed) || 1.0;
         this.editing = false;
     }
 
     _updateField(e, field) {
-        this.tempConfig = { ...this.tempConfig, [field]: e.target.value };
+        let value = e.target.value;
+        if (field === 'textSpeed') {
+            value = value === '' ? '' : parseFloat(value);
+        }
+        this.tempConfig = { ...this.tempConfig, [field]: value };
     }
 
     render() {
@@ -103,6 +111,10 @@ class TextToSpeechConfigurationPanel extends LitElement {
                             <label>Model ID</label>
                             <input type="text" .value="${this.tempConfig.modelId}" @input="${e => this._updateField(e, 'modelId')}">
                         </div>
+                        <div class="input-group">
+                            <label>Text Speed</label>
+                            <input type="number" step="0.01" min="0.1" .value="${this.tempConfig.textSpeed}" @input="${e => this._updateField(e, 'textSpeed')}">
+                        </div>
                         <button type="submit">Save</button>
                         <button type="button" @click="${this._cancelEdit}">Cancel</button>
                     </form>
@@ -110,6 +122,10 @@ class TextToSpeechConfigurationPanel extends LitElement {
                     <div class="input-group">
                         <label>Model ID</label>
                         <div>${this.modelId}</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Text Speed</label>
+                        <div>${this.textSpeed}</div>
                     </div>
                     <button @click="${this._startEdit}">Edit</button>
                 `}

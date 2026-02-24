@@ -48,13 +48,17 @@ export class TextToSpeech extends Controller {
     private async loadConfigsAndSubscribe() {
         TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
         TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
+        this.loadControllerConfiguration("textSpeed", TextToSpeech.textSpeed);
+        this.loadControllerConfiguration("modelId", TextToSpeech.modelId);
         this.subscribeControllerRecord("textSpeed", async (value: any) => {
             await this.setControllerRecordConfiguration("textSpeed", value);
             TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
+            this.sendInfo("Text speed changed to " + TextToSpeech.textSpeed)
         });
         this.subscribeControllerRecord("modelId", async (value: any) => {
             await this.setControllerRecordConfiguration("modelId", value);
             TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
+            this.sendInfo("Model id changed to " + TextToSpeech.modelId)
         });
     }
 
