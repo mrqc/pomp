@@ -37,4 +37,7 @@ is english. There is a configuration UI available. Near future steps are:
 npm ci # or also npm install
 npm run start
 ```
-Then open http://localhost:4000 in your browser.
+
+Then wait for the "Hello" from POMP. You can now say e.g. "Hey buddy, whats the time?". 
+
+Also you can open http://localhost:4000 in your browser.
