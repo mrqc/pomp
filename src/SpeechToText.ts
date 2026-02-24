@@ -9,6 +9,7 @@ import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts
 import {AudioRecording} from "./AudioRecording.ts";
 import {Controller} from "./Controller.ts";
 import type {DatabaseConnector} from "./DatabaseConnector.ts";
+import type {TextToSpeech} from "./TextToSpeech.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,13 +31,16 @@ export class SpeechToText extends Controller {
     private phrases: Phrase[] = [];
     private agentsController: AgentsController;
     private isActivatedByKeyword: boolean = false;
+    private textToSpeech: TextToSpeech;
     
     constructor(agentsController: AgentsController,
                 clientServerSynchronization: ClientServerSynchronization,
-                databaseConnector: DatabaseConnector) {
+                databaseConnector: DatabaseConnector,
+                textToSpeech: TextToSpeech) {
         super(clientServerSynchronization, databaseConnector, "SpeechToText");
         SpeechToText.cleanup();
         this.agentsController = agentsController;
+        this.textToSpeech = textToSpeech;
     }
     
     async init() {
@@ -103,11 +107,12 @@ export class SpeechToText extends Controller {
     private async transformIntermediaryOutputToTextFile(outputFileName: string) {
         try {
             let text = await this.putTextIntoPhrases(outputFileName);
-            this.clientServerSynchronization.setValue("SpeechContext", "text", this.getCurrentStreamText());
+            this.clientServerSynchronization.loadRecordValue("SpeechContext", "text", this.getCurrentStreamText());
             if (text.length == 0 && this.isActive()) {
                 this.setInactive()
                 let currentContextWindow = this.getCurrentStreamText();
                 this.phrases = [];
+                this.textToSpeech.say("Ok, give me a moment.")
                 this.logger.info("Last chunk was silence and hence closing input collection")
                 await this.agentsController.startSessionByActivationWordSession(currentContextWindow);
             } else if (this.currentStreamTextContainsActivationKeyword()) {

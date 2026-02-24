@@ -53,6 +53,11 @@ export class AgentsController extends Controller {
     }
     
     public async startSessionByActivationWordSession(text: string) {
+        let llmProvider = await this.databaseConnector.getLLMProvider();
+        if (llmProvider == null || llmProvider.length == 0) {
+            this.textToSpeech.say("Sorry, but there are no LLM providers registered.");
+            return;
+        }
         const { session } = await createAgentSession({
             tools: [readTool, bashTool],
             resourceLoader: this.loader,
@@ -94,8 +99,9 @@ export class AgentsController extends Controller {
             content: []
         }
         this.externalAgentSessions.push(externalSession)
+        this.textToSpeech.say("Add a new session");
         this.logger.info("Adding session " + JSON.stringify(externalSession));
-        this.clientServerSynchronization.setValue("Sessions", "list", this.externalAgentSessions);
+        this.clientServerSynchronization.loadRecordValue("Sessions", "list", this.externalAgentSessions);
     }
     
     async loadSkills() {

@@ -48,18 +48,23 @@ export class AudioRecording extends Controller {
         AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
         AudioRecording.defaultRecordingDuration = await this.getControllerRecordIntegerConfiguration("defaultRecordingDuration");
         AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordIntegerConfiguration("stopWaitingRecordDuration");
-
+        this.loadControllerConfiguration("sampleRate", AudioRecording.sampleRate);
+        this.loadControllerConfiguration("defaultRecordingDuration", AudioRecording.defaultRecordingDuration);
+        this.loadControllerConfiguration("stopWaitingRecordDuration", AudioRecording.stopWaitingRecordDuration);
         this.subscribeControllerRecord("sampleRate", async (value: any) => {
             await this.setControllerRecordConfiguration("sampleRate", value);
             AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
+            this.sendInfo("Sample rate changed to " + AudioRecording.sampleRate)
         });
         this.subscribeControllerRecord("defaultRecordingDuration", async (value: any) => {
             await this.setControllerRecordConfiguration("defaultRecordingDuration", value);
             AudioRecording.defaultRecordingDuration = await this.getControllerRecordIntegerConfiguration("defaultRecordingDuration");
+            this.sendInfo("Default recording duration changed to " + AudioRecording.defaultRecordingDuration)
         });
         this.subscribeControllerRecord("stopWaitingRecordDuration", async (value: any) => {
             await this.setControllerRecordConfiguration("stopWaitingRecordDuration", value);
             AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordIntegerConfiguration("stopWaitingRecordDuration");
+            this.sendInfo("Stop waiting record duration changed to " + AudioRecording.stopWaitingRecordDuration)
         });
     }
 
@@ -118,7 +123,7 @@ export class AudioRecording extends Controller {
             this.speechToText.writeAudioFileToTextStream(closureOutputFileName);
         });
         wavFileWriter.end();
-        await this.startRecording();
+        //await this.startRecording();
     }
 
     private workerOnMessage(message: any) {

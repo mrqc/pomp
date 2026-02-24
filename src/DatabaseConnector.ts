@@ -199,7 +199,7 @@ export class DatabaseConnector {
         });
     }
 
-    async getStringArrayConfig(recordName: string, variableName: string) {
+    async getStringArrayConfig(recordName: string, variableName: string): Promise<string[]> {
         return new Promise((resolve, reject) => {
             this.database.get(
                 `select value
@@ -216,7 +216,7 @@ export class DatabaseConnector {
                             resolve(row ? 
                                 row.value.split(",")
                                     .map((aKeyword: string) => aKeyword.trim()) 
-                                : null);
+                                : []);
                         } else {
                             reject(`Error: Value ${row.value} is not string values separated by ,`);
                         }

@@ -62,7 +62,7 @@ export class TextToSpeech extends Controller {
         return textToSay.replace(/[*#_~`|<>\/]/g, ' ');
     }
 
-    async say(text: string) {
+    say(text: string) {
         text = this.removeNotSayableChars(text)
         this.logger.info("Text to say: " + text)
         this.splitter?.push(text);

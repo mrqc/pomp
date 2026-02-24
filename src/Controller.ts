@@ -15,7 +15,7 @@ export class Controller {
     }
     
     subscribeControllerRecord(variableName: string, callback: (value: any) => void) {
-        this.clientServerSynchronization.subscribe(this.recordName, variableName, callback);
+        this.clientServerSynchronization.subscribeOnRecord(this.recordName, variableName, callback);
     }
     
     async setControllerRecordConfiguration(variableName: string, value: any) {
@@ -42,4 +42,15 @@ export class Controller {
         return await this.databaseConnector.getBooleanConfig(this.recordName, variableName);
     }
     
+    loadControllerConfiguration(variableName: string, value: any) {
+        this.clientServerSynchronization.loadRecordValue(this.recordName, variableName, value);
+    }
+    
+    sendError(message: string) {
+        this.clientServerSynchronization.sendError(message);
+    }
+    
+    sendInfo(message: string) {
+        this.clientServerSynchronization.sendInfo(message);
+    }
 }

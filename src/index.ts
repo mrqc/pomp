@@ -32,7 +32,7 @@ let agentsController: AgentsController = new AgentsController(textToSpeech, clie
 logger.info("Starting audio playing")
 let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex, clientServerSynchronization, databaseConnector);
 logger.info("Starting speech to text")
-let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector);
+let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector, textToSpeech);
 logger.info("Starting audio recording")
 let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, clientServerSynchronization, databaseConnector);
 

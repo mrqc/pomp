@@ -22,7 +22,7 @@ export class ClientServerSynchronization {
         await this.client.login()
     }
     
-    setValue(recordName: string, variableName: string, value: any) {
+    loadRecordValue(recordName: string, variableName: string, value: any) {
         try {
             let record = this.client.record.getRecord(recordName);
             record.whenReady((record) => {
@@ -35,12 +35,20 @@ export class ClientServerSynchronization {
         }
     }
     
-    subscribe(recordName: string, variableName: string, callback: (value: any) => void) {
+    subscribeOnRecord(recordName: string, variableName: string, callback: (value: any) => void) {
         try {
             let record = this.client.record.getRecord(recordName);
             record.subscribe(variableName, callback);
         } catch (error) {
             this.logger.error("Error subscribing to variable " + variableName + " on record " + recordName + ": " + error)
         }
+    }
+    
+    sendError(message: string) {
+        this.client.event.emit("Errors", message);
+    }
+    
+    sendInfo(message: string) {
+        this.client.event.emit("Infos", message)
     }
 }

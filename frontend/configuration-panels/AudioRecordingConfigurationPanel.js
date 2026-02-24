@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
 import { ConfigurationPanel } from "./ConfigurationPanel.js";
 
+
 class AudioRecordingConfigurationPanel extends ConfigurationPanel {
     static styles = css`
         :host { 
@@ -64,12 +65,17 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
     };
 
     constructor() {
-        super();
-        this.sampleRate = 16000;
-        this.defaultRecordingDuration = 3000;
-        this.stopWaitingRecordDuration = 600;
+        super("AudioRecording");
         this.editing = false;
         this.tempConfig = this._getCurrentConfig();
+    }
+    
+    async connectedCallback() {
+        super.connectedCallback();
+        this.sampleRate = await this.getConfig("sampleRate");
+        this.defaultRecordingDuration = await this.getConfig("defaultRecordingDuration");
+        this.stopWaitingRecordDuration = await this.getConfig("stopWaitingRecordDuration");
+        this.requestUpdate();
     }
 
     _getCurrentConfig() {
@@ -90,11 +96,14 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
         this.tempConfig = this._getCurrentConfig();
     }
 
-    _saveConfig(e) {
+    async _saveConfig(e) {
         e.preventDefault();
         this.sampleRate = Number(this.tempConfig.sampleRate);
         this.defaultRecordingDuration = Number(this.tempConfig.defaultRecordingDuration);
         this.stopWaitingRecordDuration = Number(this.tempConfig.stopWaitingRecordDuration);
+        await this.setConfig("sampleRate", this.sampleRate);
+        await this.setConfig("defaultRecordingDuration", this.defaultRecordingDuration);
+        await this.setConfig("stopWaitingRecordDuration", this.stopWaitingRecordDuration);
         this.editing = false;
     }
 

@@ -20,9 +20,19 @@ export class ClientServerSynchronization {
         return this.client.record.getRecord(recordName);
     }
     
+    setValue(recordName, variableName, value) {
+        this.client.record.getRecord(recordName).whenReady((record) => {
+            record.set(variableName, value);
+        });
+    }
+    
     subscribeOnRecord(recordName, variableName, callback) {
         this.getRecord(recordName).subscribe(variableName, (data) => {
             callback(data);
         });
+    }
+    
+    subscribeOnEvent(eventName, callback) {
+        return this.client.event.subscribe(eventName, callback);
     }
 }
