@@ -123,7 +123,7 @@ export class AudioRecording extends Controller {
             this.speechToText.writeAudioFileToTextStream(closureOutputFileName);
         });
         wavFileWriter.end();
-        //await this.startRecording();
+        await this.startRecording();
     }
 
     private workerOnMessage(message: any) {

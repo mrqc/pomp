@@ -172,14 +172,19 @@ class AppLayout extends LitElement {
         selectedPanel: {
             type: String
         },
+        selectedSession: {
+            type: Object
+        },
     };
 
     sessions;
     sessionService;
+    selectedSession;
 
     constructor() {
         super();
         this.selectedPanel = '';
+        this.selectedSession = null;
         this.sessionService = new SessionService();
     }
 
@@ -194,6 +199,12 @@ class AppLayout extends LitElement {
 
     handleMenuClick(panel) {
         this.selectedPanel = panel;
+        this.selectedSession = null;
+    }
+
+    handleSessionClick(session) {
+        this.selectedPanel = 'session';
+        this.selectedSession = session;
     }
 
     async subscribeSessions() {
@@ -217,7 +228,11 @@ class AppLayout extends LitElement {
                 <nav class="sidebar">
                     <ul>
                         ${this.sessions && this.sessions.length > 0 ? this.sessions.map(session => html`
-                            <li>${session.title}</li>`) : html`
+                            <li
+                                @click="${() => this.handleSessionClick(session)}"
+                                class="${this.selectedPanel === 'session' && this.selectedSession && this.selectedSession.id === session.id ? 'active' : ''}"
+                                tabindex="0"
+                            >${session.title}</li>`) : html`
                             <li>No sessions</li>`}
                     </ul>
                     <hr />
@@ -231,6 +246,9 @@ class AppLayout extends LitElement {
                 </nav>
 
                 <main class="main-content">
+                    ${this.selectedPanel === 'session' && this.selectedSession ? html`
+                        <session-panel .session="${this.selectedSession}"></session-panel>
+                    ` : ''}
                     ${['llm', ''].includes(this.selectedPanel) ? html`
                         <llm-configuration-panel></llm-configuration-panel>` : ''}
                     ${this.selectedPanel === 'audio-recording' ? html`
