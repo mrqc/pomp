@@ -28,7 +28,7 @@ export class ClientServerSynchronization {
             record.whenReady((record) => {
                 this.logger.info("Setting value '" + value + "' for variable " + variableName + " on record " + recordName)
                 record.set(variableName, value);
-                this.logger.info("Value '" + value + "' for variable " + record + " set on record " + recordName)
+                this.logger.info("Value '" + value + "' for variable " + variableName + " set on record " + recordName)
             });
         } catch (error) {
             this.logger.error("Error setting value '" + value + "' for variable " + variableName + " on record " + recordName + ": " + error)

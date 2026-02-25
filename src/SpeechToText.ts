@@ -64,7 +64,7 @@ export class SpeechToText extends Controller {
             this.sendInfo("Seconds to loose text changed to " + SpeechToText.secondsToLooseText)
         });
         this.subscribeControllerRecord("activationKeywords", async (value: any) => {
-            await this.setControllerRecordConfiguration("activationKeywords", value);
+            await this.setControllerRecordConfiguration("activationKeywords", value.join(', '));
             SpeechToText.activationKeywords = await this.getControllerRecordStringArrayConfiguration("activationKeywords")
             this.sendInfo("Activation keywords changed to " + SpeechToText.activationKeywords)
         });
