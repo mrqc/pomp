@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "npx vite build && npx tsx src/index.ts",
+    "start": "rm -rf frontend/public && npx vite build && npx tsx src/index.ts",
     "build": "tsc",
-    "dev": "npm run start"
+    "dev": "npm run start",
+    "photo": "npx tsx src/tools/Photo.ts"
   },
   "pi": {
     "extensions": [
@@ -30,6 +31,7 @@
     "@types/express": "^5.0.6",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.2.3",
+    "@types/node-webcam": "^0.8.3",
     "@types/wav": "^1.0.4",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
@@ -59,6 +61,7 @@
     "node-record-lpcm16": "^1.0.1",
     "node-wav": "^0.0.2",
     "node-wav-player": "^1.0.0",
+    "node-webcam": "^0.8.2",
     "nodejs-whisper": "^0.2.9",
     "sqlite3": "^5.1.7",
     "typescript-logging": "^2.2.0",

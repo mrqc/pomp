@@ -11,6 +11,7 @@ import {InternalLogger} from "./LogConfig.ts";
 import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {DatabaseConnector} from "./DatabaseConnector.ts";
 import {Configuration} from "./Configuration.ts";
+import {Tools} from "./Tools.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,7 @@ function gracefulShutdown(signal: string) {
     SpeechToText.cleanup();
     TextToSpeech.cleanup();
     databaseConnector.close();
+    Tools.cleanup();
     process.exit(0);
 }
 
