@@ -32,14 +32,12 @@ export class InteractionLayer extends LitElement {
     px;
     py;
     p5Instance;
-
+    
     connectedCallback() {
         super.connectedCallback();
-        this.handPose = ml5.handPose({ flipped: true });
     }
 
     firstUpdated() {
-        // Attach p5 sketch to the container
         const container = this.renderRoot.getElementById('interaction-canvas-container');
         this.p5Instance = new p5((sketch) => {
             sketch.setup = () => {
@@ -48,11 +46,17 @@ export class InteractionLayer extends LitElement {
                 this.painting.clear();
                 this.video = sketch.createCapture(sketch.VIDEO, { flipped: true });
                 this.video.hide();
-                this.handPose.detectStart(this.video.elt, this.gotHands.bind(this));
+                this.video.elt.onloadeddata = () => {
+                    this.handPose = ml5.handPose({ flipped: true }, () => {
+                        this.handPose.detectStart(this.video, (result) => {
+                            this.hands = result;
+                        });
+                    });
+                };
             };
             sketch.draw = () => {
                 sketch.image(this.video, 0, 0);
-                if (this.hands && this.hands.length > 0) {
+                if (this.hands.length > 0) {
                     let hand = this.hands[0];
                     let index = hand.index_finger_tip;
                     let thumb = hand.thumb_tip;
@@ -70,11 +74,6 @@ export class InteractionLayer extends LitElement {
                 sketch.image(this.painting, 0, 0);
             };
         }, container);
-    }
-
-    gotHands(results) {
-        console.log("gotHands")
-        this.hands = results;
     }
 
     render() {

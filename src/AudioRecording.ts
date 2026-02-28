@@ -90,28 +90,49 @@ export class AudioRecording extends Controller {
         this.logger.info("Acquire lock")
         await this.audioMutex.acquire();
         try {
+            this.logger.info("1");
             let outputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
+            this.logger.info("2");
+            const inputDevices = portAudio.getDevices().filter((d: any) => d.maxInputChannels > 0);
+            this.logger.info("Available input devices: " + JSON.stringify(inputDevices));
+            let selectedDeviceId = -1;
+            if (inputDevices.length === 0) {
+                this.logger.error("No input audio devices found. Please check your system settings and permissions.");
+                this.audioMutex.release();
+                return;
+            } else {
+                selectedDeviceId = inputDevices[0]?.id ?? -1;
+            }
             let audioIo = portAudio.AudioIO({
                 inOptions: {
                     channelCount: 1,
                     sampleFormat: portAudio.SampleFormat16Bit,
                     sampleRate: AudioRecording.sampleRate,
-                    deviceId: -1,
+                    deviceId: selectedDeviceId,
                     closeOnError: true
                 }
             });
+            this.logger.info("3");
             let wavFileWriter = new wav.FileWriter(outputFileName, {
                 channels: 1,
                 sampleRate: AudioRecording.sampleRate,
                 bitDepth: 16
             });
+            this.logger.info("4");
             audioIo.pipe(wavFileWriter);
+            this.logger.info("5");
             audioIo.start();
+            this.logger.info("6");
             setTimeout(() => {
+                this.logger.info("6");
                 this.audioMutex.release();
+                this.logger.info("7");
                 this.stopRecording(outputFileName, wavFileWriter, audioIo)
+                this.logger.info("8");
             }, AudioRecording.recordDuration);
+            this.logger.info("9");
         } catch (error) {
+            this.logger.error("Error in startRecording: " + error);
             this.audioMutex.release();
         }
     }
