@@ -63,10 +63,11 @@ export class InteractionLayer extends LitElement {
                     let x = (index.x + thumb.x) * 0.5;
                     let y = (index.y + thumb.y) * 0.5;
                     let d = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+                    let mirroredX = 640 - x;
                     if (d < 20) {
                         this.painting.stroke(255, 255, 0);
                         this.painting.strokeWeight(8);
-                        this.painting.line(this.px, this.py, x, y);
+                        this.painting.line(this.px !== undefined ? 640 - this.px : mirroredX, this.py, mirroredX, y);
                     }
                     this.px = x;
                     this.py = y;
