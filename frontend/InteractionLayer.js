@@ -33,19 +33,39 @@ export class InteractionLayer extends LitElement {
     px;
     py;
     p5Instance;
+    canvasWidth = window.innerWidth;
+    canvasHeight = window.innerHeight;
     
     connectedCallback() {
         super.connectedCallback();
+        window.addEventListener('resize', this.handleResize.bind(this));
+    }
+
+    disconnectedCallback() {
+        window.removeEventListener('resize', this.handleResize.bind(this));
+        super.disconnectedCallback();
+    }
+
+    handleResize() {
+        this.canvasWidth = window.innerWidth;
+        this.canvasHeight = window.innerHeight;
+        if (this.p5Instance) {
+            this.p5Instance.resizeCanvas(this.canvasWidth, this.canvasHeight);
+            if (this.painting) {
+                this.painting.resizeCanvas(this.canvasWidth, this.canvasHeight);
+            }
+        }
     }
 
     firstUpdated() {
         const container = this.renderRoot.getElementById('interaction-canvas-container');
         this.p5Instance = new p5((sketch) => {
             sketch.setup = () => {
-                sketch.createCanvas(640, 480).parent(container);
-                this.painting = sketch.createGraphics(640, 480);
+                sketch.createCanvas(this.canvasWidth, this.canvasHeight).parent(container);
+                this.painting = sketch.createGraphics(this.canvasWidth, this.canvasHeight);
                 this.painting.clear();
                 this.video = sketch.createCapture(sketch.VIDEO, { flipped: true });
+                this.video.size(this.canvasWidth, this.canvasHeight);
                 this.video.hide();
                 this.video.elt.onloadeddata = () => {
                     this.handPose = ml5.handPose({ flipped: true }, () => {
@@ -55,8 +75,11 @@ export class InteractionLayer extends LitElement {
                     });
                 };
             };
+            sketch.windowResized = () => {
+                this.handleResize();
+            };
             sketch.draw = () => {
-                sketch.image(this.video, 0, 0);
+                sketch.image(this.video, 0, 0, this.canvasWidth, this.canvasHeight);
                 if (this.hands.length > 0) {
                     let hand = this.hands[0];
                     let index = hand.index_finger_tip;
@@ -70,11 +93,11 @@ export class InteractionLayer extends LitElement {
                     this.painting.clear();
                     this.painting.noStroke();
                     this.painting.fill(255, 0, 0);
-                    this.painting.ellipse(640 - x, y, 20, 20);
+                    this.painting.ellipse(this.canvasWidth - x, y, 20, 20);
                     this.px = x;
                     this.py = y;
                 }
-                sketch.image(this.painting, 0, 0);
+                sketch.image(this.painting, 0, 0, this.canvasWidth, this.canvasHeight);
             };
         }, container);
     }
