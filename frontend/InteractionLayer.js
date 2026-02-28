@@ -1,5 +1,6 @@
 import ml5 from 'ml5';
 import {html, LitElement, css} from "lit";
+import p5 from 'p5';
 
 export class InteractionLayer extends LitElement {
     static styles = css`
@@ -11,6 +12,7 @@ export class InteractionLayer extends LitElement {
             height: 100vh;
             z-index: 99999;
             pointer-events: none;
+            background-color: #2563eb;
             display: block;
         }
         #interaction-canvas-container {
@@ -23,22 +25,17 @@ export class InteractionLayer extends LitElement {
             pointer-events: none;
         }
     `;
-
-    constructor() {
-        super();
-    }
-
-
-    video;
     handPose;
-    hands = [];
+    hands;
     painting;
-    px = 0;
-    py = 0;
+    video;
+    px;
+    py;
     
-    async connectedCallback() {
+    connectedCallback() {
         super.connectedCallback();
         this.handPose = ml5.handPose({ flipped: true });
+        this.setup();
     }
 
     gotHands(results) {
@@ -49,11 +46,9 @@ export class InteractionLayer extends LitElement {
         createCanvas(640, 480);
         this.painting = createGraphics(640, 480);
         this.painting.clear();
-
         this.video = createCapture(VIDEO, { flipped: true });
         this.video.hide();
-
-        this.handPose.detectStart(this.video, this.gotHands);
+        this.handPose.detectStart(video, this.gotHands);
     }
 
     draw() {
@@ -68,7 +63,7 @@ export class InteractionLayer extends LitElement {
             if (d < 20) {
                 this.painting.stroke(255, 255, 0);
                 this.painting.strokeWeight(8);
-                this.painting.line(px, py, x, y);
+                this.painting.line(this.px, this.py, x, y);
             }
             this.px = x;
             this.py = y;
