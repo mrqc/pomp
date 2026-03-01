@@ -109,8 +109,8 @@ export class InteractionLayer extends LitElement {
                     let domY = (transformedY) + paddingY * paddingYRatio;
                     
                     if (d < 20) {
-                        alert("click");
                         if ( !this.isPinching) {
+                            //alert("click");
                             this.isPinching = true;
                             const target = document.elementFromPoint(domX, domY);
                             if (target) {
