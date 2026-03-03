@@ -8,29 +8,39 @@ export class InteractionLayer extends LitElement {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 0;
+            height: 0;
             z-index: 99999;
-            pointer-events: none;
             background-color: #FFFFFF00;
             display: block;
+            pointer-events: none;
         }
         #interaction-canvas-container {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 99999;
+            width: 0;
+            height: 0;
             pointer-events: none;
+        }
+        #dom-pointer {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: red;
+            z-index: 100000;
+            border-radius: 50%;
+            left: 0px;
+            top: 0px;
+            transition: left 0.05s linear, top 0.05s linear;
+            pointer-events: auto;
         }
     `;
     handPose;
     hands = [];
-    painting;
     video;
-    px;
-    py;
+    pxs = [];
+    pys = [];
     p5Instance;
     canvasWidth = window.innerWidth;
     canvasHeight = window.innerHeight;
@@ -51,20 +61,16 @@ export class InteractionLayer extends LitElement {
         this.canvasHeight = window.innerHeight;
         if (this.p5Instance) {
             this.p5Instance.resizeCanvas(this.canvasWidth, this.canvasHeight);
-            if (this.painting) {
-                this.painting.resizeCanvas(this.canvasWidth, this.canvasHeight);
-            }
         }
     }
 
     firstUpdated() {
         const container = this.renderRoot.getElementById('interaction-canvas-container');
+        const domPointer = this.renderRoot.getElementById('dom-pointer');
         this.p5Instance = new p5((sketch) => {
             let videoWidth = 640;
             let videoHeight = 480;
             sketch.setup = () => {
-                sketch.createCanvas(this.canvasWidth, this.canvasHeight).parent(container);
-                this.painting = sketch.createGraphics(this.canvasWidth, this.canvasHeight);
                 this.video = sketch.createCapture(sketch.VIDEO, { flipped: true });
                 this.video.size(videoWidth, videoHeight);
                 this.video.hide();
@@ -81,7 +87,6 @@ export class InteractionLayer extends LitElement {
             };
             sketch.draw = () => {
                 sketch.clear();
-                this.painting.clear();
                 sketch.image(this.video, 
                     this.canvasWidth / 2 - videoWidth / 2, 
                     this.canvasHeight / 2 - videoHeight / 2, 
@@ -94,8 +99,10 @@ export class InteractionLayer extends LitElement {
 
                     let paddingX = 800;
                     let paddingY = 500;
-                    let x = (index.x + thumb.x) * 0.5;
-                    let y = (index.y + thumb.y) * 0.5;
+                    let sumPxs = this.pxs.reduce((acc, val) => acc + val, 0);
+                    let sumPys = this.pys.reduce((acc, val) => acc + val, 0);
+                    let x = (index.x + thumb.x + sumPxs) * 1.0 / (2.0 + this.pxs.length);
+                    let y = (index.y + thumb.y + sumPys) * 1.0 / (2.0 + this.pys.length);
                     let ratioX = x / (videoWidth);
                     let ratioY = y / (videoHeight);
                     let transformedX = (this.canvasWidth) * ratioX;
@@ -104,35 +111,71 @@ export class InteractionLayer extends LitElement {
                     let paddingXRatio = (x - videoWidth / 2) / (videoWidth / 2);
                     let paddingYRatio = (y - videoHeight / 2) / (videoHeight / 2);
                     
-                    let d = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+                    let distance = sketch.dist(index.x, index.y, thumb.x, thumb.y);
                     let domX = (this.canvasWidth - transformedX) - paddingX * paddingXRatio;
                     let domY = (transformedY) + paddingY * paddingYRatio;
                     
-                    if (d < 20) {
-                        if ( !this.isPinching) {
-                            //alert("click");
+                    function getDeepestElementFromPoint(x, y) {
+                        let el = document.elementFromPoint(x, y);
+                        let deepest = el;
+                        while (el && el.shadowRoot) {
+                            // elementFromPoint in shadowRoot uses coordinates relative to the viewport
+                            const inner = el.shadowRoot.elementFromPoint(x, y);
+                            if (!inner || inner === el) break;
+                            deepest = inner;
+                            el = inner;
+                        }
+                        return deepest;
+                    }
+
+                    if (distance < 20) {
+                        if (!this.isPinching) {
                             this.isPinching = true;
-                            const target = document.elementFromPoint(domX, domY);
+                            const target = getDeepestElementFromPoint(domX, domY);
                             if (target) {
-                                const evt = new MouseEvent('click', {
+                                console.log(target.id + " " + target.tagName);
+                                let event = {
+                                    view: window,
                                     bubbles: true,
                                     cancelable: true,
+                                    composed: true,
                                     clientX: domX,
                                     clientY: domY
-                                });
-                                target.dispatchEvent(evt);
+                                };
+                                target.dispatchEvent(new MouseEvent('mousedown', event));
+                                target.dispatchEvent(new MouseEvent('mouseup', event));
+                                target.dispatchEvent(new MouseEvent('click', event));
+                                const tag = target.tagName.toLowerCase();
+                                if (tag === "input" || tag === "textarea") {
+                                    target.focus();
+                                    if (target.type === "checkbox" || target.type === "radio") {
+                                        target.checked = !target.checked;
+                                        target.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
+                                } else if (tag === "select") {
+                                    target.focus();
+                                    target.dispatchEvent(new MouseEvent('mousedown', event));
+                                    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+                                }
                             }
                         }
                     } else {
                         this.isPinching = false;
                     }
-                    this.painting.noStroke();
-                    this.painting.fill(255, 0, 0);
-                    this.painting.ellipse(domX, domY, 10, 10);
-                    this.px = x;
-                    this.py = y;
+                    if (domPointer) {
+                        domPointer.style.left = `${domX - 2.5}px`;
+                        domPointer.style.top = `${domY - 2.5}px`;
+                    }
+                    this.pxs.push(x);
+                    this.pys.push(y);
+                    let maxElements = 3;
+                    if (this.pxs.length > maxElements) {
+                        this.pxs = this.pxs.slice(-maxElements);
+                    }
+                    if (this.pys.length > maxElements) {
+                        this.pys = this.pys.slice(-maxElements);
+                    }
                 }
-                sketch.image(this.painting, 0, 0, this.canvasWidth, this.canvasHeight);
             };
         }, container);
     }
@@ -140,6 +183,7 @@ export class InteractionLayer extends LitElement {
     render() {
         return html`
             <div id="interaction-canvas-container"></div>
+            <div id="dom-pointer"></div>
         `;
     }
 }
