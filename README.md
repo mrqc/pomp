@@ -2,7 +2,7 @@
 
 ## What is POMP?
 
-*POMP* is a headless (first) assistant run by voice. It is my vision of the future interaction with AI agents.
+*POMP* is a headless (first) assistant run by voice. It has eyes and ears. It is my vision of the future interaction with AI agents.
 POMP is there without seeing it. There is (at first) no GUI but controlled by your voice. This headless approach
 is an enabler to integrate AI seamless into our daily life. We have to rethink our interaction with computers.
 Maybe the future integration of software systems/AI was already defined in Start Trek, Star Wars and other Science
