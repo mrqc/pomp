@@ -1,5 +1,15 @@
 import {InternalLogger} from "./LogConfig.js";
-import {AgentSession, AuthStorage, bashTool, createAgentSession, DefaultResourceLoader, ModelRegistry, readTool, SessionManager} from "@mariozechner/pi-coding-agent";
+import {
+    AgentSession,
+    AuthStorage,
+    bashTool,
+    createAgentSession,
+    type CreateAgentSessionResult,
+    DefaultResourceLoader,
+    ModelRegistry,
+    readTool,
+    SessionManager
+} from "@mariozechner/pi-coding-agent";
 import {fileURLToPath} from "url";
 import path from "path";
 import type {TextToSpeech} from "./TextToSpeech.ts";
@@ -8,6 +18,8 @@ import {uuidv7} from "uuidv7";
 import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {DatabaseConnector} from "./DatabaseConnector.ts";
 import {Controller} from "./Controller.ts";
+import type { ProviderConfigInput } from "./mapper/ProviderConfigInput.ts";
+import {Mutex} from "es-toolkit";
 
 interface InternalAgentSession {
     id: string;
@@ -37,6 +49,7 @@ export class AgentsController extends Controller {
     private textToSpeech: TextToSpeech;
     private authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
+    private modelRegistryMutex: Mutex = new Mutex();
 
     private loader = new DefaultResourceLoader({
         cwd: process.cwd(),
@@ -50,21 +63,58 @@ export class AgentsController extends Controller {
     async init() {
         await this.registerProvider();
         await this.loadSkills();
+        await this.loadConfigsAndSubscribe();
+    }
+    
+    private async loadConfigsAndSubscribe() {
+        this.subscribeControllerRecord("llmProviders", async (value: any) => {
+            this.logger.info("Received llmProviders config update")
+            if (Array.isArray(value)) {
+                for (let i = 0; i < value.length; i++) {
+                    const providerConfig = value[i];
+                    const id = providerConfig.id || i;
+                    await this.databaseConnector.saveLLMProvider(id, providerConfig);
+                }
+                this.logger.info(`Stored ${value.length} LLM provider(s) from config update.`);
+                await this.modelRegistryMutex.acquire();
+                try {
+                    this.modelRegistry = new ModelRegistry(this.authStorage);
+                    await this.registerProvider();
+                } finally {
+                    this.modelRegistryMutex.release();
+                }
+                this.sendInfo(`Stored ${value.length} LLM provider(s) from config update.`);
+            } else {
+                this.logger.error("llmProviders config update did not provide an array of ProviderConfigInput");
+                this.sendError("Unable to store LLM provider(s).")
+            }
+        });
     }
     
     public async startSessionByActivationWordSession(text: string) {
         let llmProvider = await this.databaseConnector.getLLMProvider();
-        if (llmProvider == null || llmProvider.length == 0) {
-            this.textToSpeech.say("Sorry, but there are no LLM providers registered.");
+        let models = llmProvider ? llmProvider.flatMap(provider => provider.models || []) : [];
+        if (llmProvider == null || llmProvider.length == 0 || models.length == 0) {
+            this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
             return;
         }
-        const { session } = await createAgentSession({
-            tools: [readTool, bashTool],
-            resourceLoader: this.loader,
-            sessionManager: SessionManager.inMemory(),
-            authStorage: this.authStorage,
-            modelRegistry: this.modelRegistry,
-        });
+        var session: AgentSession | null = null;
+        try {
+            await this.modelRegistryMutex.acquire();
+            let sessionCreationResult = await createAgentSession({
+                tools: [readTool, bashTool],
+                resourceLoader: this.loader,
+                sessionManager: SessionManager.inMemory(),
+                authStorage: this.authStorage,
+                modelRegistry: this.modelRegistry,
+            });
+            session = sessionCreationResult.session;
+        } finally {
+            this.modelRegistryMutex.release();
+        }
+        if (session == null) {
+            return;
+        }
         session.subscribe((event) => {
             if ("agent_end" == event.type) {
                 this.logger.info(JSON.stringify(event, null, 2));
@@ -122,12 +172,13 @@ export class AgentsController extends Controller {
             return;
         }
         for (let provider of llmProvider) {
-            this.modelRegistry.registerProvider(provider.name, {
+            let providerConfigInput: ProviderConfigInput = {
                 baseUrl: provider.baseUrl,
                 apiKey: provider.apiKey,
                 api: provider.api,
                 models: provider.models
-            });
+            };
+            this.modelRegistry.registerProvider(provider.name, providerConfigInput);
         }
     }
 }

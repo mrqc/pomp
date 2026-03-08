@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
+import { ConfigurationPanel } from "./ConfigurationPanel.js";
 
-class TextToSpeechConfigurationPanel extends LitElement {
+class TextToSpeechConfigurationPanel extends ConfigurationPanel {
     static styles = css`
         :host { 
             display: block; 
@@ -62,11 +63,16 @@ class TextToSpeechConfigurationPanel extends LitElement {
     };
 
     constructor() {
-        super();
-        this.modelId = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-        this.textSpeed = 1.0;
+        super("TextToSpeech");
         this.editing = false;
         this.tempConfig = this._getCurrentConfig();
+    }
+
+    async connectedCallback() {
+        super.connectedCallback();
+        this.modelId = await this.getConfig("modelId");
+        this.textSpeed = await this.getConfig("textSpeed");
+        this.requestUpdate();
     }
 
     _getCurrentConfig() {
@@ -86,10 +92,12 @@ class TextToSpeechConfigurationPanel extends LitElement {
         this.tempConfig = this._getCurrentConfig();
     }
 
-    _saveConfig(e) {
+    async _saveConfig(e) {
         e.preventDefault();
         this.modelId = this.tempConfig.modelId;
         this.textSpeed = parseFloat(this.tempConfig.textSpeed) || 1.0;
+        await this.setConfig("modelId", this.modelId);
+        await this.setConfig("textSpeed", this.textSpeed);
         this.editing = false;
     }
 

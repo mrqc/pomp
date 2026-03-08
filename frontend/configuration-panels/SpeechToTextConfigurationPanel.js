@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
+import { ConfigurationPanel } from "./ConfigurationPanel.js";
 
-class SpeechToTextConfigurationPanel extends LitElement {
+class SpeechToTextConfigurationPanel extends ConfigurationPanel {
     static styles = css`
         :host { 
             display: block; 
@@ -69,14 +70,19 @@ class SpeechToTextConfigurationPanel extends LitElement {
     };
 
     constructor() {
-        super();
-        this.secondsToLooseText = 10;
-        this.activationKeywords = "buddy";
-        this.modelName = "default";
-        this.translateToEnglish = false;
-        this.splitOnWord = false;
+        super("SpeechToText");
         this.editing = false;
         this.tempConfig = this._getCurrentConfig();
+    }
+
+    async connectedCallback() {
+        super.connectedCallback();
+        this.secondsToLooseText = await this.getConfig("secondsToLooseText");
+        this.activationKeywords = await this.getConfig("activationKeywords");
+        this.modelName = await this.getConfig("modelName");
+        this.translateToEnglish = await this.getConfig("translateToEnglish");
+        this.splitOnWord = await this.getConfig("splitOnWord");
+        this.requestUpdate();
     }
 
     _getCurrentConfig() {
@@ -99,13 +105,18 @@ class SpeechToTextConfigurationPanel extends LitElement {
         this.tempConfig = this._getCurrentConfig();
     }
 
-    _saveConfig(e) {
+    async _saveConfig(e) {
         e.preventDefault();
         this.secondsToLooseText = Number(this.tempConfig.secondsToLooseText);
         this.activationKeywords = this.tempConfig.activationKeywords;
         this.modelName = this.tempConfig.modelName;
         this.translateToEnglish = !!this.tempConfig.translateToEnglish;
         this.splitOnWord = !!this.tempConfig.splitOnWord;
+        await this.setConfig("secondsToLooseText", this.secondsToLooseText);
+        await this.setConfig("activationKeywords", this.activationKeywords);
+        await this.setConfig("modelName", this.modelName);
+        await this.setConfig("translateToEnglish", this.translateToEnglish);
+        await this.setConfig("splitOnWord", this.splitOnWord);
         this.editing = false;
     }
 

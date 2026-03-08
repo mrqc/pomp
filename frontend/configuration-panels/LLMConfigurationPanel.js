@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
+import { ConfigurationPanel } from "./ConfigurationPanel.js";
 
-class LLMConfigurationPanel extends LitElement {
+class LLMConfigurationPanel extends ConfigurationPanel {
     static styles = css`
         :host { 
             display: block; 
@@ -98,12 +99,18 @@ class LLMConfigurationPanel extends LitElement {
     };
 
     constructor() {
-        super();
+        super("AgentsController");
         this.providers = [];
         this.editingProviderIndex = null;
         this.editingModelIndex = null;
         this.newProvider = this._emptyProvider();
         this.newModel = this._emptyModel();
+    }
+
+    async connectedCallback() {
+        super.connectedCallback();
+        this.providers = (await this.getConfig("llmProviders")) || [];
+        this.requestUpdate();
     }
 
     _emptyProvider() {
@@ -270,7 +277,7 @@ class LLMConfigurationPanel extends LitElement {
         }
     }
 
-    _saveProvider(e, pIdx) {
+    async _saveProvider(e, pIdx) {
         e.preventDefault();
         if (pIdx === null) {
             this.providers = [...this.providers, { ...this.newProvider, models: [] }];
@@ -278,6 +285,8 @@ class LLMConfigurationPanel extends LitElement {
         } else {
             this.editingProviderIndex = null;
         }
+        await this.setConfig("llmProviders", this.providers);
+        this.requestUpdate();
     }
 
     _editProvider(pIdx) {
@@ -285,8 +294,10 @@ class LLMConfigurationPanel extends LitElement {
         this.editingModelIndex = null;
     }
 
-    _removeProvider(pIdx) {
+    async _removeProvider(pIdx) {
         this.providers = this.providers.filter((_, idx) => idx !== pIdx);
+        await this.setConfig("llmProviders", this.providers);
+        this.requestUpdate();
     }
 
     _cancelEditProvider() {
@@ -304,10 +315,12 @@ class LLMConfigurationPanel extends LitElement {
         this.editingModelIndex = mIdx;
     }
 
-    _removeModel(pIdx, mIdx) {
+    async _removeModel(pIdx, mIdx) {
         const providers = [...this.providers];
         providers[pIdx].models = providers[pIdx].models.filter((_, idx) => idx !== mIdx);
         this.providers = providers;
+        await this.setConfig("llmProviders", this.providers);
+        this.requestUpdate();
     }
 
     _cancelEditModel() {
@@ -348,7 +361,7 @@ class LLMConfigurationPanel extends LitElement {
         }
     }
 
-    _saveModel(e, pIdx, mIdx) {
+    async _saveModel(e, pIdx, mIdx) {
         e.preventDefault();
         const providers = [...this.providers];
         if (mIdx === -1) {
@@ -359,7 +372,9 @@ class LLMConfigurationPanel extends LitElement {
         }
         this.providers = providers;
         this.editingModelIndex = null;
+        await this.setConfig("llmProviders", this.providers);
+        this.requestUpdate();
     }
 }
 
-customElements.define('llm-configuration-panel', LLMConfigurationPanel);
+customElements.define("llm-configuration-panel", LLMConfigurationPanel);

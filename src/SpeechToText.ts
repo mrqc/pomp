@@ -23,7 +23,7 @@ export class SpeechToText extends Controller {
 
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
     private static secondsToLooseText = 10;
-    private static modelName = 'small.en';
+    private static modelName = 'medium.en';
     private static activationKeywords = ["buddy"];
     private static translateToEnglish: boolean = false;
     private static splitOnWord: boolean = false;
@@ -54,7 +54,7 @@ export class SpeechToText extends Controller {
         SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
         SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
         this.loadControllerConfiguration("secondsToLooseText", SpeechToText.secondsToLooseText);
-        this.loadControllerConfiguration("activationKeywords", SpeechToText.activationKeywords);
+        this.loadControllerConfiguration("activationKeywords", SpeechToText.activationKeywords.join(", "));
         this.loadControllerConfiguration("modelName", SpeechToText.modelName)
         this.loadControllerConfiguration("translateToEnglish", SpeechToText.translateToEnglish)
         this.loadControllerConfiguration("splitOnWord", SpeechToText.splitOnWord)
@@ -64,8 +64,8 @@ export class SpeechToText extends Controller {
             this.sendInfo("Seconds to loose text changed to " + SpeechToText.secondsToLooseText)
         });
         this.subscribeControllerRecord("activationKeywords", async (value: any) => {
-            await this.setControllerRecordConfiguration("activationKeywords", value.join(', '));
-            SpeechToText.activationKeywords = await this.getControllerRecordStringArrayConfiguration("activationKeywords")
+            await this.setControllerRecordConfiguration("activationKeywords", value);
+            SpeechToText.activationKeywords = await this.getControllerRecordStringArrayConfiguration("activationKeywords");
             this.sendInfo("Activation keywords changed to " + SpeechToText.activationKeywords)
         });
         this.subscribeControllerRecord("modelName", async (value: any) => {

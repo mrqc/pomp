@@ -6,6 +6,7 @@ import {fileURLToPath} from "url";
 import {Controller} from "./Controller.ts";
 import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import type {DatabaseConnector} from "./DatabaseConnector.ts";
+import {Logger} from "@deepstream/client/dist/src/util/logger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,13 +36,15 @@ export class TextToSpeech extends Controller {
                 speed: TextToSpeech.textSpeed, 
                 split_pattern: new RegExp('\t') 
             });
-        (async () => {
-            for await (const {text, phonemes, audio} of stream) {
-                this.logger.info(JSON.stringify({text, phonemes}));
-                let fileName = path.resolve(TextToSpeech.AUDIO_DIR, 'output-' + Date.now() + '.wav');
-                audio.save(fileName);
-            }
-        })();
+        if ( !InternalLogger.isDebug()) {
+            (async () => {
+                for await (const {text, phonemes, audio} of stream) {
+                    this.logger.info(JSON.stringify({text, phonemes}));
+                    let fileName = path.resolve(TextToSpeech.AUDIO_DIR, 'output-' + Date.now() + '.wav');
+                    audio.save(fileName);
+                }
+            })();
+        }
         await this.loadConfigsAndSubscribe();
     }
 

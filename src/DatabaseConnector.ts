@@ -300,6 +300,63 @@ export class DatabaseConnector {
         });
     }
 
+    public async saveLLMProvider(id: number, providerConfig: any): Promise<void> {
+        // Upsert LLMProvider
+        return new Promise(async (resolve, reject) => {
+            const name = providerConfig.name || `provider_${id}`;
+            const baseUrl = providerConfig.baseUrl || '';
+            const apiKey = providerConfig.apiKey || '';
+            const apiText = providerConfig.api ? JSON.stringify(providerConfig.api) : '';
+            const status = providerConfig.status || 'active';
+            this.database.run(
+                `insert or replace into LLMProvider (id, name, baseUrl, apiKey, apiText, status) values (?, ?, ?, ?, ?, ?)`,
+                [id, name, baseUrl, apiKey, apiText, status],
+                (error: Error | null) => {
+                    if (error) {
+                        this.logger.error("Error saving LLMProvider: " + error);
+                        reject(error);
+                        return;
+                    }
+                    // Upsert models if present
+                    if (Array.isArray(providerConfig.models)) {
+                        const modelOps = providerConfig.models.map((model: any) => {
+                            return new Promise<void>((res, rej) => {
+                                const modelId = model.id;
+                                const modelNameText = model.name;
+                                const reasoning = model.reasoning ? 1 : 0;
+                                const inputText = Array.isArray(model.input) ? model.input.join(',') : '';
+                                const costInput = model.cost?.input ?? 0;
+                                const costOutput = model.cost?.output ?? 0;
+                                const costCacheRead = model.cost?.cacheRead ?? 0;
+                                const costCacheWrite = model.cost?.cacheWrite ?? 0;
+                                const contextWindow = model.contextWindow ?? 0;
+                                const maxTokens = model.maxTokens ?? 0;
+                                const status = model.status || 'active';
+                                this.database.run(
+                                    `insert or replace into LLMProviderModel (llmProviderId, modelId, modelNameText, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                    [id, modelId, modelNameText, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
+                                    (err: Error | null) => {
+                                        if (err) {
+                                            this.logger.error("Error saving LLMProviderModel: " + err);
+                                            rej(err);
+                                        } else {
+                                            res();
+                                        }
+                                    }
+                                );
+                            });
+                        });
+                        Promise.all(modelOps)
+                            .then(() => resolve())
+                            .catch(reject);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
+    }
+
     public close() {
         this.database.close();
     }
