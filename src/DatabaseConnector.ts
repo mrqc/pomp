@@ -42,7 +42,7 @@ export class DatabaseConnector {
                 id integer auto_increment primary key,
                 llmProviderId varchar(40),
                 modelId varchar(70) not null,
-                modelNameText not null,
+                modelName not null,
                 reasoning integer not null,
                 inputText not null,
                 costInput real not null,
@@ -322,7 +322,7 @@ export class DatabaseConnector {
                         const modelOps = providerConfig.models.map((model: any) => {
                             return new Promise<void>((res, rej) => {
                                 const modelId = model.id;
-                                const modelNameText = model.name;
+                                const modelName = model.name;
                                 const reasoning = model.reasoning ? 1 : 0;
                                 const inputText = Array.isArray(model.input) ? model.input.join(',') : '';
                                 const costInput = model.cost?.input ?? 0;
@@ -333,8 +333,8 @@ export class DatabaseConnector {
                                 const maxTokens = model.maxTokens ?? 0;
                                 const status = model.status || 'active';
                                 this.database.run(
-                                    `insert or replace into LLMProviderModel (llmProviderId, modelId, modelNameText, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                                    [id, modelId, modelNameText, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
+                                    `insert or replace into LLMProviderModel (llmProviderId, modelId, modelName, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                    [id, modelId, modelName, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
                                     (err: Error | null) => {
                                         if (err) {
                                             this.logger.error("Error saving LLMProviderModel: " + err);

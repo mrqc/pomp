@@ -26,6 +26,7 @@ export class AudioRecording extends Controller {
     private logger = new InternalLogger(__filename);
     private speechToText: SpeechToText;
     private audioMutex: Mutex;
+    private audioDevice: IoStreamRead | null = null;
 
     constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
@@ -86,32 +87,44 @@ export class AudioRecording extends Controller {
         this.audioMutex.release();
     }
     
+    private initAudioDevice(): IoStreamRead | null {
+        this.logger.info("Initializing Audio Device");
+        if (this.audioDevice != null) {
+            return this.audioDevice;
+        }
+        const inputDevices = portAudio.getDevices().filter((d: any) => d.maxInputChannels > 0);
+        this.logger.info("Available input devices: " + JSON.stringify(inputDevices));
+        let selectedDeviceId = -1;
+        if (inputDevices.length === 0) {
+            this.logger.error("No input audio devices found. Please check your system settings and permissions.");
+            this.audioMutex.release();
+            return null;
+        } else {
+            selectedDeviceId = inputDevices[0]?.id ?? -1;
+        }
+        let audioIo = portAudio.AudioIO({
+            inOptions: {
+                channelCount: 1,
+                sampleFormat: portAudio.SampleFormat16Bit,
+                sampleRate: AudioRecording.sampleRate,
+                deviceId: selectedDeviceId,
+                closeOnError: true
+            }
+        });
+        this.audioDevice = audioIo;
+        this.logger.info("Audio Device initialized");
+        return audioIo;
+    }
+    
     async startRecording() {
         this.logger.info("Acquire lock")
         await this.audioMutex.acquire();
         try {
             let outputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
-            this.logger.info("Initializing Audio Device");
-            const inputDevices = portAudio.getDevices().filter((d: any) => d.maxInputChannels > 0);
-            this.logger.info("Available input devices: " + JSON.stringify(inputDevices));
-            let selectedDeviceId = -1;
-            if (inputDevices.length === 0) {
-                this.logger.error("No input audio devices found. Please check your system settings and permissions.");
-                this.audioMutex.release();
+            let audioIo = this.initAudioDevice();
+            if (audioIo == null) {
                 return;
-            } else {
-                selectedDeviceId = inputDevices[0]?.id ?? -1;
             }
-            let audioIo = portAudio.AudioIO({
-                inOptions: {
-                    channelCount: 1,
-                    sampleFormat: portAudio.SampleFormat16Bit,
-                    sampleRate: AudioRecording.sampleRate,
-                    deviceId: selectedDeviceId,
-                    closeOnError: true
-                }
-            });
-            this.logger.info("Audio Device initialized");
             let wavFileWriter = new wav.FileWriter(outputFileName, {
                 channels: 1,
                 sampleRate: AudioRecording.sampleRate,
@@ -120,8 +133,9 @@ export class AudioRecording extends Controller {
             audioIo.pipe(wavFileWriter);
             audioIo.start();
             setTimeout(() => {
+                audioIo.quit();
                 this.audioMutex.release();
-                this.stopRecording(outputFileName, wavFileWriter, audioIo)
+                this.stopRecording(outputFileName, wavFileWriter)
             }, AudioRecording.recordDuration);
         } catch (error) {
             this.logger.error("Error in startRecording: " + error);
@@ -129,14 +143,13 @@ export class AudioRecording extends Controller {
         }
     }
     
-    private async stopRecording(outputFileName: string, wavFileWriter: FileWriter, ai: IoStreamRead) {
-        ai.quit();
+    private async stopRecording(outputFileName: string, wavFileWriter: FileWriter) {
         const closureOutputFileName = outputFileName;
         wavFileWriter.on('finish', async () => {
             this.speechToText.writeAudioFileToTextStream(closureOutputFileName);
         });
         wavFileWriter.end();
-        //await this.startRecording();
+        await this.startRecording();
     }
 
     private workerOnMessage(message: any) {

@@ -9,11 +9,11 @@ export default function (pi: ExtensionAPI) {
     let logger = new InternalLogger(__filename)
     pi.on("before_agent_start", async (event, ctx) => {
         logger.info("Injecting into context");
-        const contextPath = join(ctx.cwd, "INTENTION.md");
+        const contextPath = join(ctx.cwd, "OWNER.md");
         const contextContent = await readFile(contextPath, "utf-8");
         return {
             message: {
-                customType: "IntentionContextInformation",
+                customType: "OwnerContextInformation",
                 content: contextContent,
                 display: true
             },

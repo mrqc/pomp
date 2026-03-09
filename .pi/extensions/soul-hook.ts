@@ -9,7 +9,7 @@ export default function (pi: ExtensionAPI) {
     let logger = new InternalLogger(__filename)
     pi.on("before_agent_start", async (event, ctx) => {
         logger.info("Injecting into context");
-        const contextPath = join(ctx.cwd, "OWNER.md");
+        const contextPath = join(ctx.cwd, "SOUL.md");
         const contextContent = await readFile(contextPath, "utf-8");
         return {
             message: {
