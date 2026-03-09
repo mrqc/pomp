@@ -27,6 +27,8 @@ export class AudioRecording extends Controller {
     private speechToText: SpeechToText;
     private audioMutex: Mutex;
     private audioDevice: IoStreamRead | null = null;
+    private currentWavFileWriter: FileWriter | null = null;
+    private isRecording: boolean = false;
 
     constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
@@ -111,6 +113,13 @@ export class AudioRecording extends Controller {
                 closeOnError: true
             }
         });
+        // Attach data event handler for manual writing
+        audioIo.on('data', (chunk: Buffer) => {
+            if (this.isRecording && this.currentWavFileWriter) {
+                this.currentWavFileWriter.write(chunk);
+            }
+        });
+        audioIo.start();
         this.audioDevice = audioIo;
         this.logger.info("Audio Device initialized");
         return audioIo;
@@ -125,17 +134,17 @@ export class AudioRecording extends Controller {
             if (audioIo == null) {
                 return;
             }
-            let wavFileWriter = new wav.FileWriter(outputFileName, {
+            if (this.currentWavFileWriter) {
+                this.currentWavFileWriter.end();
+            }
+            this.currentWavFileWriter = new wav.FileWriter(outputFileName, {
                 channels: 1,
                 sampleRate: AudioRecording.sampleRate,
                 bitDepth: 16
             });
-            audioIo.pipe(wavFileWriter);
-            audioIo.start();
+            this.isRecording = true;
             setTimeout(() => {
-                audioIo.quit();
-                this.audioMutex.release();
-                this.stopRecording(outputFileName, wavFileWriter)
+                this.stopRecording(outputFileName);
             }, AudioRecording.recordDuration);
         } catch (error) {
             this.logger.error("Error in startRecording: " + error);
@@ -143,13 +152,30 @@ export class AudioRecording extends Controller {
         }
     }
     
-    private async stopRecording(outputFileName: string, wavFileWriter: FileWriter) {
-        const closureOutputFileName = outputFileName;
-        wavFileWriter.on('finish', async () => {
-            this.speechToText.writeAudioFileToTextStream(closureOutputFileName);
-        });
-        wavFileWriter.end();
+    private async stopRecording(outputFileName: string) {
+        this.isRecording = false;
+        const writer = this.currentWavFileWriter;
+        if (writer) {
+            writer.on('finish', async () => {
+                this.speechToText.writeAudioFileToTextStream(outputFileName);
+            });
+            writer.end();
+            this.currentWavFileWriter = null;
+        }
+        this.audioMutex.release();
         await this.startRecording();
+    }
+
+    public stopAndCleanupAudioDevice() {
+        if (this.audioDevice) {
+            this.audioDevice.quit();
+            this.audioDevice = null;
+        }
+        if (this.currentWavFileWriter) {
+            this.currentWavFileWriter.end();
+            this.currentWavFileWriter = null;
+        }
+        this.isRecording = false;
     }
 
     private workerOnMessage(message: any) {
