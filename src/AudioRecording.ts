@@ -26,7 +26,6 @@ export class AudioRecording extends Controller {
     private logger = new InternalLogger(__filename);
     private speechToText: SpeechToText;
     private audioMutex: Mutex;
-    private audioIo: IoStreamRead | null = null;
 
     constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
@@ -39,15 +38,10 @@ export class AudioRecording extends Controller {
         this.speechToText = speechToText;
         fs.ensureDirSync(AudioRecording.RECORDINGS_DIR);
         this.initWorker();
-        this.initAudioInterface();
     }
     
     async init() {
         await this.loadConfigsAndSubscribe();
-    }
-    
-    private initAudioInterface() {
-        
     }
 
     private async loadConfigsAndSubscribe() {
@@ -108,7 +102,7 @@ export class AudioRecording extends Controller {
             } else {
                 selectedDeviceId = inputDevices[0]?.id ?? -1;
             }
-            this.audioIo = portAudio.AudioIO({
+            let audioIo = portAudio.AudioIO({
                 inOptions: {
                     channelCount: 1,
                     sampleFormat: portAudio.SampleFormat16Bit,
@@ -123,11 +117,11 @@ export class AudioRecording extends Controller {
                 sampleRate: AudioRecording.sampleRate,
                 bitDepth: 16
             });
-            this.audioIo.pipe(wavFileWriter);
-            this.audioIo.start();
+            audioIo.pipe(wavFileWriter);
+            audioIo.start();
             setTimeout(() => {
                 this.audioMutex.release();
-                this.stopRecording(outputFileName, wavFileWriter, this.audioIo)
+                this.stopRecording(outputFileName, wavFileWriter, audioIo)
             }, AudioRecording.recordDuration);
         } catch (error) {
             this.logger.error("Error in startRecording: " + error);
@@ -142,7 +136,7 @@ export class AudioRecording extends Controller {
             this.speechToText.writeAudioFileToTextStream(closureOutputFileName);
         });
         wavFileWriter.end();
-        await this.startRecording();
+        //await this.startRecording();
     }
 
     private workerOnMessage(message: any) {

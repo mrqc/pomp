@@ -67,6 +67,7 @@ export class AgentsController extends Controller {
     }
     
     private async loadConfigsAndSubscribe() {
+        this.loadControllerConfiguration("llmProviders", await this.databaseConnector.getLLMProvider())
         this.subscribeControllerRecord("llmProviders", async (value: any) => {
             this.logger.info("Received llmProviders config update")
             if (Array.isArray(value)) {

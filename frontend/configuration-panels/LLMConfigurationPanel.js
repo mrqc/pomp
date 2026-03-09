@@ -115,7 +115,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
 
     _emptyProvider() {
         return {
-            type: '',
+            name: '',
             baseUrl: '',
             apiKey: '',
             api: '',
@@ -144,7 +144,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
                 ${this.providers.length === 0 ? html`<div>No providers registered.</div>` : ''}
                 ${this.providers.map((provider, pIdx) => html`
                     <div class="provider">
-                        <div class="input-group"><label>Provider Name</label><div>${provider.type}</div></div>
+                        <div class="input-group"><label>Provider Name</label><div>${provider.name}</div></div>
                         <div class="input-group"><label>Base URL</label><div>${provider.baseUrl}</div></div>
                         <div class="input-group"><label>API Key</label><div class="monospace">${provider.apiKey}</div></div>
                         <div class="input-group"><label>API</label><div>${provider.api}</div></div>
@@ -187,8 +187,8 @@ class LLMConfigurationPanel extends ConfigurationPanel {
         return html`
             <form @submit="${e => this._saveProvider(e, pIdx)}">
                 <div class="input-group">
-                    <label>Type</label>
-                    <input .value="${provider.type}" @input="${e => this._updateProviderField(e, 'type', pIdx)}" required>
+                    <label>Name</label>
+                    <input .value="${provider.name}" @input="${e => this._updateProviderField(e, 'name', pIdx)}" required>
                 </div>
                 <div class="input-group">
                     <label>Base URL</label>
@@ -285,8 +285,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
         } else {
             this.editingProviderIndex = null;
         }
-        await this.setConfig("llmProviders", this.providers);
-        this.requestUpdate();
+        await this.syncToBackend();
     }
 
     _editProvider(pIdx) {
@@ -296,8 +295,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
 
     async _removeProvider(pIdx) {
         this.providers = this.providers.filter((_, idx) => idx !== pIdx);
-        await this.setConfig("llmProviders", this.providers);
-        this.requestUpdate();
+        await this.syncToBackend();
     }
 
     _cancelEditProvider() {
@@ -319,6 +317,10 @@ class LLMConfigurationPanel extends ConfigurationPanel {
         const providers = [...this.providers];
         providers[pIdx].models = providers[pIdx].models.filter((_, idx) => idx !== mIdx);
         this.providers = providers;
+        await this.syncToBackend();
+    }
+    
+    async syncToBackend() {
         await this.setConfig("llmProviders", this.providers);
         this.requestUpdate();
     }
@@ -372,8 +374,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
         }
         this.providers = providers;
         this.editingModelIndex = null;
-        await this.setConfig("llmProviders", this.providers);
-        this.requestUpdate();
+        await this.syncToBackend();
     }
 }
 
