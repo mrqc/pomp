@@ -28,14 +28,14 @@ logger.info("Starting express")
 let express: ExpressWrapper = new ExpressWrapper(clientServerSynchronization, databaseConnector, configuration)
 logger.info("Starting text to speech")
 let textToSpeech: TextToSpeech = new TextToSpeech(clientServerSynchronization, databaseConnector);
-logger.info("Agents controller starting")
-let agentsController: AgentsController = new AgentsController(textToSpeech, clientServerSynchronization, databaseConnector);
 logger.info("Starting audio playing")
 let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex, clientServerSynchronization, databaseConnector);
+logger.info("Agents controller starting")
+let agentsController: AgentsController = new AgentsController(textToSpeech, clientServerSynchronization, databaseConnector);
 logger.info("Starting speech to text")
-let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector, textToSpeech);
+let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector);
 logger.info("Starting audio recording")
-let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, clientServerSynchronization, databaseConnector);
+let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, clientServerSynchronization, databaseConnector, textToSpeech, audioPlaying);
 
 logger.info("Starting environment...")
 

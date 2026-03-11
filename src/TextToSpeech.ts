@@ -76,6 +76,15 @@ export class TextToSpeech extends Controller {
         this.splitter.flush();
     }
     
+    wantsToSaySomething(): boolean {
+        if (fs.existsSync(TextToSpeech.AUDIO_DIR)) {
+            const files = fs.readdirSync(TextToSpeech.AUDIO_DIR);
+            this.logger.info("files: " + JSON.stringify(files))
+            return files.some(file => file.endsWith('.wav'));
+        }
+        return false;
+    }
+
     public static cleanup() {
         if ( !InternalLogger.isDebug()) {
             fs.removeSync(TextToSpeech.AUDIO_DIR);

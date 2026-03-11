@@ -12,6 +12,8 @@ import {InternalLogger} from "./LogConfig.ts";
 import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
 import {Controller} from "./Controller.ts";
 import type {DatabaseConnector} from "./DatabaseConnector.ts";
+import {TextToSpeech} from "./TextToSpeech.ts";
+import {AudioPlaying} from "./AudioPlaying.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,19 +28,23 @@ export class AudioRecording extends Controller {
     private audioMutex: Mutex;
     private audioDevice: IoStreamRead | null = null;
     private currentWavFileWriter: FileWriter | null = null;
+    private textToSpeech: TextToSpeech | null = null;
     private isRecording: boolean = false;
     private currentOutputFileName: string | null = null;
-    private silentCount = 0;
+    public silentCount = 0;
+    private audioPlaying: AudioPlaying;
 
-    constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
+    constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector, textToSpeech: TextToSpeech, audioPlaying: AudioPlaying) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
         AudioRecording.cleanup();
         this.workerOnMessage = this.workerOnMessage.bind(this);
         this.workerError = this.workerError.bind(this);
         this.workerExit = this.workerExit.bind(this);
         this.startRecording = this.startRecording.bind(this);
+        this.textToSpeech = textToSpeech;
         this.audioMutex = audioMutex;
         this.speechToText = speechToText;
+        this.audioPlaying = audioPlaying;
         fs.ensureDirSync(AudioRecording.RECORDINGS_DIR);
         this.initWorker();
     }
@@ -122,7 +128,10 @@ export class AudioRecording extends Controller {
             }
             if (silent) {
                 this.logger.info('Silence detected in audio chunk');
+                this.logger.info("silenceCount = " + this.silentCount + " wantsToSay = " + this.textToSpeech?.wantsToSaySomething() + " isPlaying = " + this.audioPlaying.isPlaying)
                 if (this.silentCount == 0) {
+                    this.stopRecording();
+                } else if (this.textToSpeech?.wantsToSaySomething() && !this.audioPlaying.isPlaying) {
                     this.stopRecording();
                 }
                 this.silentCount++;

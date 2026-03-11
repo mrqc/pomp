@@ -18,6 +18,6 @@ export class InternalLogger {
     }
     
     public static isDebug() {
-        return true;
+        return false;
     }
 }

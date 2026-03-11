@@ -21,6 +21,10 @@ import {Controller} from "./Controller.ts";
 import type { ProviderConfigInput } from "./mapper/ProviderConfigInput.ts";
 import {Mutex} from "es-toolkit";
 import type {Api} from "@mariozechner/pi-ai";
+import type {AudioRecording} from "./AudioRecording.ts";
+import type {SpeechToText} from "./SpeechToText.ts";
+import {join} from "node:path";
+import {readFile} from "node:fs/promises";
 
 interface InternalAgentSession {
     id: string;
@@ -40,6 +44,11 @@ interface ExternalAgentMessage {
     timestamp: number;
 }
 
+interface Intention {
+    tagName: string,
+    content: string
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -51,16 +60,36 @@ export class AgentsController extends Controller {
     private authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
     private modelRegistryMutex: Mutex = new Mutex();
+    
+    private async getFileContent(filename: string): Promise<string> {
+        const contextPath = join(__dirname, "..", filename);
+        const contextContent = await readFile(contextPath, "utf-8");
+        return contextContent;
+    }
 
     private loader = new DefaultResourceLoader({
         cwd: process.cwd(),
+        extensionFactories: [
+            (pi) => {
+                pi.on("before_agent_start", async (event, ctx) => {
+                    return {
+                        message: {
+                            customType: "IntentionContextInformation",
+                            content: await this.getFileContent("INTENTION.md") + "\n" 
+                                + await this.getFileContent("OWNER.md") + "\n"
+                                + await this.getFileContent("SOUL.md"),
+                            display: true
+                        },
+                    };
+                });
+            }]
     });
 
     constructor(textToSpeech: TextToSpeech, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "AgentsController");
         this.textToSpeech = textToSpeech;
     }
-
+    
     async init() {
         await this.registerProvider();
         await this.loadSkills();
@@ -119,28 +148,52 @@ export class AgentsController extends Controller {
         if (session == null) {
             return;
         }
+        let internalSession = this.addSession(session, text)
         session.subscribe((event) => {
             if ("agent_end" == event.type) {
                 this.logger.info(JSON.stringify(event, null, 2));
                 let messages: Message[] = event.messages.filter((message) => message.role == "assistant");
-                let textToSay = "";
-                for (let message of messages) {
-                    if (Array.isArray(message.content)) {
-                        let contents = message.content.filter((content: { type: string; }) => content.type == "text");
-                        for (let content of contents) {
-                            textToSay += (content as TextContent).text + " ";
-                        }
-                    }
+                let overallResponseContent = "";
+                overallResponseContent = this.extractTextFromResponse(messages, overallResponseContent);
+                let intentions = this.getIntentionContents(overallResponseContent);
+                let speakIntention = intentions.filter((intention) => intention.tagName == "SPEAK")[0]
+                this.logger.info("intentions: " + JSON.stringify(intentions))
+                overallResponseContent = this.removeIntentionContents(overallResponseContent);
+                if (speakIntention !== undefined) {
+                    this.textToSpeech.say(speakIntention.content);
                 }
-                this.textToSpeech.say(textToSay);
             }
         });
-        this.addSession(session, text)
         this.logger.info("Providing prompt " + text + " to session")
         await session.prompt(text)
     }
-    
-    private addSession(session: AgentSession, text: string) {
+
+    private removeIntentionContents(textToSay: string) {
+        return textToSay.replace(/\[([a-zA-Z0-9_-]+)\]([\s\S]*?)\[\/\1\]/g, "");
+    }
+
+    private getIntentionContents(content: string): Intention[] {
+        const regex = /\[([a-zA-Z0-9_-]+)\]([\s\S]*?)\[\/\1\]/g;
+        
+        return Array.from(content.matchAll(regex), match => ({
+            tagName: match[1],
+            content: match[2]
+        } as Intention));
+    }
+
+    private extractTextFromResponse(messages: Message[], textToSay: string) {
+        for (let message of messages) {
+            if (Array.isArray(message.content)) {
+                let contents = message.content.filter((content: { type: string; }) => content.type == "text");
+                for (let content of contents) {
+                    textToSay += (content as TextContent).text + " ";
+                }
+            }
+        }
+        return textToSay;
+    }
+
+    private addSession(session: AgentSession, text: string): InternalAgentSession {
         let internalSession = {
             id: uuidv7().toString(),
             agentSession: session,
@@ -153,9 +206,9 @@ export class AgentsController extends Controller {
             content: []
         }
         this.externalAgentSessions.push(externalSession)
-        this.textToSpeech.say("Add a new session");
         this.logger.info("Adding session " + JSON.stringify(externalSession));
         this.clientServerSynchronization.loadRecordValue("Sessions", "list", this.externalAgentSessions);
+        return internalSession
     }
     
     async loadSkills() {

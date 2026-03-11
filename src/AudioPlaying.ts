@@ -21,7 +21,7 @@ export class AudioPlaying extends Controller {
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'audio-outputs');
     private audioMutex: Mutex;
     private queue: AudioFile[] = [];
-    private isPlaying: boolean = false;
+    public isPlaying: boolean = false;
     private watcher: any;
     private logger = new InternalLogger(__filename);
 
@@ -101,10 +101,12 @@ export class AudioPlaying extends Controller {
             return;
         }
         try {
+            this.logger.info("playing " + next.filePath)
             await wavPlayer.play({
                 path: next.filePath,
                 sync: true
             });
+            fs.removeSync(next.filePath)
         } catch (err) {
             console.error('Error playing file:', next.filePath, err);
         } finally {

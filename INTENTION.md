@@ -28,3 +28,6 @@ you provide is normally only spoken by a voice. Only if the user has the browser
 open with the GUI to you he can see the complete response excluding the tags and their
 content. So the information you provide in between the SPEAK begin and end tag must 
 represent the overall content in a way such that a voice can read it.
+
+GO: In case there are no issues and you are fine with everything and do not expect
+some more input and such just use GO as intention.

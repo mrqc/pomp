@@ -6,7 +6,6 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import type {AgentsController} from "./AgentsController.ts";
 import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
-import {AudioRecording} from "./AudioRecording.ts";
 import {Controller} from "./Controller.ts";
 import type {DatabaseConnector} from "./DatabaseConnector.ts";
 import type {TextToSpeech} from "./TextToSpeech.ts";
@@ -28,19 +27,16 @@ export class SpeechToText extends Controller {
     private static translateToEnglish: boolean = false;
     private static splitOnWord: boolean = false;
     private logger = new InternalLogger(__filename);
-    private phrases: Phrase[] = [];
+    public phrases: Phrase[] = [];
     private agentsController: AgentsController;
     private isActivatedByKeyword: boolean = false;
-    private textToSpeech: TextToSpeech;
     
     constructor(agentsController: AgentsController,
                 clientServerSynchronization: ClientServerSynchronization,
-                databaseConnector: DatabaseConnector,
-                textToSpeech: TextToSpeech) {
+                databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "SpeechToText");
         SpeechToText.cleanup();
         this.agentsController = agentsController;
-        this.textToSpeech = textToSpeech;
     }
     
     async init() {
@@ -88,7 +84,7 @@ export class SpeechToText extends Controller {
     async writeAudioFileToTextStream(outputFileName: string) {
         fs.ensureDirSync(SpeechToText.TRANSLATION_DIR);
         await this.transformSpeechToIntermediaryOutput(outputFileName)
-        await this.transformIntermediaryOutputToTextFile(outputFileName)
+        await this.transformIntermediaryOutputToPhrases(outputFileName)
     }
     
     private cleanupTranscribedString(text: string): string {
@@ -112,20 +108,17 @@ export class SpeechToText extends Controller {
         return this.isActivatedByKeyword;
     }
     
-    private async transformIntermediaryOutputToTextFile(outputFileName: string) {
+    private async transformIntermediaryOutputToPhrases(outputFileName: string) {
         try {
             let text = await this.putTextIntoPhrases(outputFileName);
             this.clientServerSynchronization.loadRecordValue("SpeechContext", "text", this.getCurrentStreamText());
-            if (text.length == 0 && this.isActive()) {
-                this.setInactive()
-                let currentContextWindow = this.getCurrentStreamText();
-                this.phrases = [];
-                this.textToSpeech.say("Ok, give me a moment.")
-                this.logger.info("Last chunk was silence and hence closing input collection")
-                await this.agentsController.startSessionByActivationWordSession(currentContextWindow);
-            } else if (this.currentStreamTextContainsActivationKeyword()) {
+            this.logger.info("transformation process length: " + text.length + " active " + this.isActive())
+            if (this.currentStreamTextContainsActivationKeyword()) {
                 this.setActive();
                 this.logger.info("Activation via keyword in context window")
+                let currentContextWindow = this.getCurrentStreamText();
+                this.phrases = []
+                await this.agentsController.startSessionByActivationWordSession(currentContextWindow);
             } else if ( !this.isActive()) {
                 this.logger.info("Cleaning up context window")
                 this.removeOutdatedPhrasesFromContextWindow();
