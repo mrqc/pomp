@@ -12,7 +12,6 @@ class AudioStreamContext extends LitElement {
         }
     `;
     
-    speechContextRecord;
     speechContext = "";
     
     async connectedCallback() {
@@ -22,7 +21,7 @@ class AudioStreamContext extends LitElement {
 
     async init() {
         const clientServerSync = await ClientServerSynchronization.getInstance();
-        clientServerSync.subscribeOnRecord("SpeechContext", "text", (data) => {
+        clientServerSync.subscribeOnRecordVariable("SpeechContext", "text", (data) => {
             this.speechContext = data;
             this.requestUpdate();
         });

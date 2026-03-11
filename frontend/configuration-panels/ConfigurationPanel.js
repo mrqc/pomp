@@ -17,14 +17,15 @@ export class ConfigurationPanel extends LitElement {
         await this.subscribeOnInfos();
     }
     
-    async getConfig(variableName) {
+    async getRecordVariable(variableName) {
         const clientServerSync = await ClientServerSynchronization.getInstance();
         let record = clientServerSync.getRecord(this.recordName);
+        console.log("retrieving value of " + this.recordName + " and var " + variableName);
         return new Promise((resolve, reject) => {
             record.whenReady(rec => {
                 try {
                     const value = rec.get(variableName);
-                    console.log("value" + value + " for " + variableName);
+                    console.log("value for " + variableName, value);
                     resolve(value);
                 } catch (e) {
                     reject(e);
@@ -33,7 +34,7 @@ export class ConfigurationPanel extends LitElement {
         });
     }
     
-    async setConfig(variableName, value) {
+    async setRecordVariable(variableName, value) {
         const clientServerSync = await ClientServerSynchronization.getInstance();
         clientServerSync.setValue(this.recordName, variableName, value);
     }

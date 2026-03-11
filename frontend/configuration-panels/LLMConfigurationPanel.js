@@ -109,16 +109,16 @@ class LLMConfigurationPanel extends ConfigurationPanel {
 
     async connectedCallback() {
         super.connectedCallback();
-        this.providers = (await this.getConfig("llmProviders")) || [];
+        this.providers = (await this.getRecordVariable("llmProviders")) || [];
         this.requestUpdate();
     }
 
     _emptyProvider() {
         return {
-            name: '',
-            baseUrl: '',
+            name: 'openapi',
+            baseUrl: 'https://api.openai.com/v1',
             apiKey: '',
-            api: '',
+            api: 'openai-responses',
             models: [],
             active: true
         };
@@ -126,13 +126,16 @@ class LLMConfigurationPanel extends ConfigurationPanel {
 
     _emptyModel() {
         return {
-            id: '',
-            name: '',
+            modelId: 'gpt-5.2',
+            modelName: 'GPT-5.2',
             reasoning: false,
-            input: ['text'],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: 0,
-            maxTokens: 0,
+            inputType: ['text'],
+            costInput: 0.05, 
+            costOutput: 0.4, 
+            costCacheRead: 0.005, 
+            costCacheWrite: 0.005,
+            contextWindow: 100000,
+            maxTokens: 10000,
             active: true
         };
     }
@@ -154,11 +157,11 @@ class LLMConfigurationPanel extends ConfigurationPanel {
                             ${provider.models.length === 0 ? html`<div>No models.</div>` : ''}
                             ${provider.models.map((model, mIdx) => html`
                                 <div class="model-box">
-                                    <div class="input-group"><label>ID</label><div>${model.id}</div></div>
-                                    <div class="input-group"><label>Name</label><div>${model.name}</div></div>
+                                    <div class="input-group"><label>ID</label><div>${model.modelId}</div></div>
+                                    <div class="input-group"><label>Name</label><div>${model.modelName}</div></div>
                                     <div class="input-group"><label>Reasoning</label><div>${model.reasoning ? 'Yes' : 'No'}</div></div>
-                                    <div class="input-group"><label>Input</label><div>${model.input.join(', ')}</div></div>
-                                    <div class="input-group"><label>Cost</label><div>input: ${model.cost.input}, output: ${model.cost.output}, cacheRead: ${model.cost.cacheRead}, cacheWrite: ${model.cost.cacheWrite}</div></div>
+                                    <div class="input-group"><label>Input</label><div>${model.inputType}</div></div>
+                                    <div class="input-group"><label>Cost</label><div>input: ${model.costInput}, output: ${model.costOutput}, cacheRead: ${model.costCacheRead}, cacheWrite: ${model.costCacheWrite}</div></div>
                                     <div class="input-group"><label>Context Window</label><div>${model.contextWindow}</div></div>
                                     <div class="input-group"><label>Max Tokens</label><div>${model.maxTokens}</div></div>
                                     <div class="input-group"><label>Active</label><div>${model.active ? 'Yes' : 'No'}</div></div>
@@ -218,11 +221,11 @@ class LLMConfigurationPanel extends ConfigurationPanel {
             <form @submit="${e => this._saveModel(e, pIdx, mIdx)}">
                 <div class="input-group">
                     <label>ID</label>
-                    <input .value="${model.id}" @input="${e => this._updateModelField(e, 'id', pIdx, mIdx)}" required>
+                    <input .value="${model.modelId}" @input="${e => this._updateModelField(e, 'modelId', pIdx, mIdx)}" required>
                 </div>
                 <div class="input-group">
                     <label>Name</label>
-                    <input .value="${model.name}" @input="${e => this._updateModelField(e, 'name', pIdx, mIdx)}" required>
+                    <input .value="${model.modelName}" @input="${e => this._updateModelField(e, 'modelName', pIdx, mIdx)}" required>
                 </div>
                 <div class="input-group">
                     <label>Reasoning</label>
@@ -230,23 +233,23 @@ class LLMConfigurationPanel extends ConfigurationPanel {
                 </div>
                 <div class="input-group">
                     <label>Input</label>
-                    <input .value="${model.input.join(', ')}" @input="${e => this._updateModelField(e, 'input', pIdx, mIdx)}" required>
+                    <input .value="${model.inputType.join(', ')}" @input="${e => this._updateModelField(e, 'inputType', pIdx, mIdx)}" required>
                 </div>
                 <div class="input-group">
                     <label>Cost (input)</label>
-                    <input type="number" step="0.001" .value="${model.cost.input}" @input="${e => this._updateModelCostField(e, 'input', pIdx, mIdx)}">
+                    <input type="number" step="0.001" .value="${model.costInput}" @input="${e => this._updateModelField(e, 'costInput', pIdx, mIdx)}">
                 </div>
                 <div class="input-group">
                     <label>Cost (output)</label>
-                    <input type="number" step="0.001" .value="${model.cost.output}" @input="${e => this._updateModelCostField(e, 'output', pIdx, mIdx)}">
+                    <input type="number" step="0.001" .value="${model.costOutput}" @input="${e => this._updateModelField(e, 'costOutput', pIdx, mIdx)}">
                 </div>
                 <div class="input-group">
                     <label>Cost (cacheRead)</label>
-                    <input type="number" step="0.001" .value="${model.cost.cacheRead}" @input="${e => this._updateModelCostField(e, 'cacheRead', pIdx, mIdx)}">
+                    <input type="number" step="0.001" .value="${model.costCacheRead}" @input="${e => this._updateModelField(e, 'costCacheRead', pIdx, mIdx)}">
                 </div>
                 <div class="input-group">
                     <label>Cost (cacheWrite)</label>
-                    <input type="number" step="0.001" .value="${model.cost.cacheWrite}" @input="${e => this._updateModelCostField(e, 'cacheWrite', pIdx, mIdx)}">
+                    <input type="number" step="0.001" .value="${model.costCacheWrite}" @input="${e => this._updateModelField(e, 'costCacheWrite', pIdx, mIdx)}">
                 </div>
                 <div class="input-group">
                     <label>Context Window</label>
@@ -321,7 +324,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
     }
     
     async syncToBackend() {
-        await this.setConfig("llmProviders", this.providers);
+        await this.setRecordVariable("llmProviders", this.providers);
         this.requestUpdate();
     }
 
@@ -332,32 +335,19 @@ class LLMConfigurationPanel extends ConfigurationPanel {
     _updateModelField(e, field, pIdx, mIdx, isCheckbox = false) {
         const value = isCheckbox ? e.target.checked : e.target.value;
         if (mIdx === -1) {
-            if (field === 'input') {
-                this.newModel = { ...this.newModel, input: value.split(',').map(s => s.trim()) };
+            if (field === 'inputType') {
+                this.newModel = { ...this.newModel, inputType: value.split(',').map(s => s.trim()) };
             } else {
                 this.newModel = { ...this.newModel, [field]: value };
             }
         } else {
             const providers = [...this.providers];
             const models = [...providers[pIdx].models];
-            if (field === 'input') {
-                models[mIdx] = { ...models[mIdx], input: value.split(',').map(s => s.trim()) };
+            if (field === 'inputType') {
+                models[mIdx] = { ...models[mIdx], inputType: value.split(',').map(s => s.trim()) };
             } else {
                 models[mIdx] = { ...models[mIdx], [field]: value };
             }
-            providers[pIdx].models = models;
-            this.providers = providers;
-        }
-    }
-
-    _updateModelCostField(e, costField, pIdx, mIdx) {
-        const value = parseFloat(e.target.value);
-        if (mIdx === -1) {
-            this.newModel = { ...this.newModel, cost: { ...this.newModel.cost, [costField]: value } };
-        } else {
-            const providers = [...this.providers];
-            const models = [...providers[pIdx].models];
-            models[mIdx] = { ...models[mIdx], cost: { ...models[mIdx].cost, [costField]: value } };
             providers[pIdx].models = models;
             this.providers = providers;
         }

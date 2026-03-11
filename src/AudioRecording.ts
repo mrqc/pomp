@@ -20,15 +20,15 @@ export class AudioRecording extends Controller {
 
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
-    public static defaultRecordingDuration = 2000;
-    public static stopWaitingRecordDuration = 600;
-    public static recordDuration = AudioRecording.defaultRecordingDuration;
+    public static defaultRecordingDuration = 0.25;
     private logger = new InternalLogger(__filename);
     private speechToText: SpeechToText;
     private audioMutex: Mutex;
     private audioDevice: IoStreamRead | null = null;
     private currentWavFileWriter: FileWriter | null = null;
     private isRecording: boolean = false;
+    private currentOutputFileName: string | null = null;
+    private silentCount = 0;
 
     constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
@@ -49,25 +49,18 @@ export class AudioRecording extends Controller {
 
     private async loadConfigsAndSubscribe() {
         AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
-        AudioRecording.defaultRecordingDuration = await this.getControllerRecordIntegerConfiguration("defaultRecordingDuration");
-        AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordIntegerConfiguration("stopWaitingRecordDuration");
-        this.loadControllerConfiguration("sampleRate", AudioRecording.sampleRate);
-        this.loadControllerConfiguration("defaultRecordingDuration", AudioRecording.defaultRecordingDuration);
-        this.loadControllerConfiguration("stopWaitingRecordDuration", AudioRecording.stopWaitingRecordDuration);
-        this.subscribeControllerRecord("sampleRate", async (value: any) => {
+        AudioRecording.defaultRecordingDuration = await this.getControllerRecordFloatConfiguration("defaultRecordingDuration");
+        this.setControllerRecordVariable("sampleRate", AudioRecording.sampleRate);
+        this.setControllerRecordVariable("defaultRecordingDuration", AudioRecording.defaultRecordingDuration);
+        this.subscribeControllerRecordVariable("sampleRate", async (value: any) => {
             await this.setControllerRecordConfiguration("sampleRate", value);
             AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
             this.sendInfo("Sample rate changed to " + AudioRecording.sampleRate)
         });
-        this.subscribeControllerRecord("defaultRecordingDuration", async (value: any) => {
+        this.subscribeControllerRecordVariable("defaultRecordingDuration", async (value: any) => {
             await this.setControllerRecordConfiguration("defaultRecordingDuration", value);
-            AudioRecording.defaultRecordingDuration = await this.getControllerRecordIntegerConfiguration("defaultRecordingDuration");
+            AudioRecording.defaultRecordingDuration = await this.getControllerRecordFloatConfiguration("defaultRecordingDuration");
             this.sendInfo("Default recording duration changed to " + AudioRecording.defaultRecordingDuration)
-        });
-        this.subscribeControllerRecord("stopWaitingRecordDuration", async (value: any) => {
-            await this.setControllerRecordConfiguration("stopWaitingRecordDuration", value);
-            AudioRecording.stopWaitingRecordDuration = await this.getControllerRecordIntegerConfiguration("stopWaitingRecordDuration");
-            this.sendInfo("Stop waiting record duration changed to " + AudioRecording.stopWaitingRecordDuration)
         });
     }
 
@@ -110,13 +103,34 @@ export class AudioRecording extends Controller {
                 sampleFormat: portAudio.SampleFormat16Bit,
                 sampleRate: AudioRecording.sampleRate,
                 deviceId: selectedDeviceId,
-                closeOnError: true
+                closeOnError: true,
+                framesPerBuffer: AudioRecording.sampleRate * AudioRecording.defaultRecordingDuration
             }
         });
         // Attach data event handler for manual writing
         audioIo.on('data', (chunk: Buffer) => {
-            if (this.isRecording && this.currentWavFileWriter) {
-                this.currentWavFileWriter.write(chunk);
+            // Silence detection logic
+            const threshold = 500; 
+            let silent = true;
+            for (let i = 0; i < chunk.length; i += 2) {
+                // Read 16-bit signed integer (little endian)
+                const sample = chunk.readInt16LE(i);
+                if (Math.abs(sample) > threshold) {
+                    silent = false;
+                    break;
+                }
+            }
+            if (silent) {
+                this.logger.info('Silence detected in audio chunk');
+                if (this.silentCount == 0) {
+                    this.stopRecording();
+                }
+                this.silentCount++;
+            } else {
+                this.silentCount = 0;
+                if (this.isRecording && this.currentWavFileWriter) {
+                    this.currentWavFileWriter.write(chunk);
+                }
             }
         });
         audioIo.start();
@@ -129,7 +143,7 @@ export class AudioRecording extends Controller {
         this.logger.info("Acquire lock")
         await this.audioMutex.acquire();
         try {
-            let outputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
+            this.currentOutputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
             let audioIo = this.initAudioDevice();
             if (audioIo == null) {
                 return;
@@ -137,27 +151,27 @@ export class AudioRecording extends Controller {
             if (this.currentWavFileWriter) {
                 this.currentWavFileWriter.end();
             }
-            this.currentWavFileWriter = new wav.FileWriter(outputFileName, {
+            this.currentWavFileWriter = new wav.FileWriter(this.currentOutputFileName, {
                 channels: 1,
                 sampleRate: AudioRecording.sampleRate,
                 bitDepth: 16
             });
             this.isRecording = true;
-            setTimeout(() => {
-                this.stopRecording(outputFileName);
-            }, AudioRecording.recordDuration);
         } catch (error) {
             this.logger.error("Error in startRecording: " + error);
             this.audioMutex.release();
         }
     }
     
-    private async stopRecording(outputFileName: string) {
+    private async stopRecording() {
         this.isRecording = false;
         const writer = this.currentWavFileWriter;
         if (writer) {
             writer.on('finish', async () => {
-                this.speechToText.writeAudioFileToTextStream(outputFileName);
+                if (this.currentOutputFileName == null) {
+                    return;
+                }
+                this.speechToText.writeAudioFileToTextStream(this.currentOutputFileName);
             });
             writer.end();
             this.currentWavFileWriter = null;

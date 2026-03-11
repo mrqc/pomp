@@ -20,6 +20,7 @@ import {DatabaseConnector} from "./DatabaseConnector.ts";
 import {Controller} from "./Controller.ts";
 import type { ProviderConfigInput } from "./mapper/ProviderConfigInput.ts";
 import {Mutex} from "es-toolkit";
+import type {Api} from "@mariozechner/pi-ai";
 
 interface InternalAgentSession {
     id: string;
@@ -67,13 +68,15 @@ export class AgentsController extends Controller {
     }
     
     private async loadConfigsAndSubscribe() {
-        this.loadControllerConfiguration("llmProviders", await this.databaseConnector.getLLMProvider())
-        this.subscribeControllerRecord("llmProviders", async (value: any) => {
-            this.logger.info("Received llmProviders config update")
+        let providers = await this.databaseConnector.getLLMProvider();
+        this.setControllerRecordVariable("llmProviders", providers)
+        this.subscribeControllerRecordVariable("llmProviders", async (value: any) => {
+            this.logger.info("Received LLM providers config update")
             if (Array.isArray(value)) {
+                await this.databaseConnector.deleteAllLLMProviders();
                 for (let i = 0; i < value.length; i++) {
                     const providerConfig = value[i];
-                    const id = providerConfig.id || i;
+                    const id = i;
                     await this.databaseConnector.saveLLMProvider(id, providerConfig);
                 }
                 this.logger.info(`Stored ${value.length} LLM provider(s) from config update.`);
@@ -86,7 +89,7 @@ export class AgentsController extends Controller {
                 }
                 this.sendInfo(`Stored ${value.length} LLM provider(s) from config update.`);
             } else {
-                this.logger.error("llmProviders config update did not provide an array of ProviderConfigInput");
+                this.logger.error("LLM Providers config update did not provide an array of ProviderConfigInput");
                 this.sendError("Unable to store LLM provider(s).")
             }
         });
@@ -172,12 +175,31 @@ export class AgentsController extends Controller {
         if (llmProvider == null) {
             return;
         }
+        
         for (let provider of llmProvider) {
+            let models = []
+            for (let llmProviderModel of provider.models) {
+                let model = {
+                    id: llmProviderModel.modelId,
+                    name: llmProviderModel.modelName,
+                    reasoning: llmProviderModel.reasoning,
+                    input: llmProviderModel.inputType.split(","),
+                    cost: {
+                        input: llmProviderModel.costInput,
+                        output: llmProviderModel.costOutput,
+                        cacheRead: llmProviderModel.costCacheRead,
+                        cacheWrite: llmProviderModel.costCacheWrite
+                    },
+                    contextWindow: llmProviderModel.contextWindow,
+                    maxTokens: llmProviderModel.maxTokens
+                }
+                models.push(model)
+            }
             let providerConfigInput: ProviderConfigInput = {
                 baseUrl: provider.baseUrl,
                 apiKey: provider.apiKey,
                 api: provider.api,
-                models: provider.models
+                models: models
             };
             this.modelRegistry.registerProvider(provider.name, providerConfigInput);
         }

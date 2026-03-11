@@ -26,7 +26,7 @@ export class ClientServerSynchronization {
         });
     }
     
-    subscribeOnRecord(recordName, variableName, callback) {
+    subscribeOnRecordVariable(recordName, variableName, callback) {
         this.getRecord(recordName).subscribe(variableName, (data) => {
             callback(data);
         });

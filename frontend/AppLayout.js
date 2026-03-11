@@ -238,7 +238,7 @@ class AppLayout extends LitElement {
                     <hr />
                     <div class="config-label">Configuration</div>
                     <ul>
-                        <li @click="${() => this.handleMenuClick('llm')}" class="${['llm', ''].includes(this.selectedPanel) ? 'active' : ''}">LLM API</li>
+                        <li @click="${() => this.handleMenuClick('llm')}" class="${this.selectedPanel === 'llm' ? 'active' : ''}">LLM API</li>
                         <li @click="${() => this.handleMenuClick('audio-recording')}" class="${this.selectedPanel === 'audio-recording' ? 'active' : ''}">Audio Recording</li>
                         <li @click="${() => this.handleMenuClick('speech-to-text')}" class="${this.selectedPanel === 'speech-to-text' ? 'active' : ''}">Speech To Text</li>
                         <li @click="${() => this.handleMenuClick('text-to-speech')}" class="${this.selectedPanel === 'text-to-speech' ? 'active' : ''}">Text To Speech</li>
@@ -249,7 +249,7 @@ class AppLayout extends LitElement {
                     ${this.selectedPanel === 'session' && this.selectedSession ? html`
                         <session-panel .session="${this.selectedSession}"></session-panel>
                     ` : ''}
-                    ${['llm', ''].includes(this.selectedPanel) ? html`
+                    ${this.selectedPanel === 'llm' ? html`
                         <llm-configuration-panel></llm-configuration-panel>` : ''}
                     ${this.selectedPanel === 'audio-recording' ? html`
                         <audio-recording-configuration-panel></audio-recording-configuration-panel>` : ''}

@@ -59,7 +59,6 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
     static properties = {
         sampleRate: { type: Number },
         defaultRecordingDuration: { type: Number },
-        stopWaitingRecordDuration: { type: Number },
         editing: { type: Boolean },
         tempConfig: { type: Object },
     };
@@ -72,9 +71,8 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
     
     async connectedCallback() {
         super.connectedCallback();
-        this.sampleRate = await this.getConfig("sampleRate");
-        this.defaultRecordingDuration = await this.getConfig("defaultRecordingDuration");
-        this.stopWaitingRecordDuration = await this.getConfig("stopWaitingRecordDuration");
+        this.sampleRate = await this.getRecordVariable("sampleRate");
+        this.defaultRecordingDuration = await this.getRecordVariable("defaultRecordingDuration");
         this.requestUpdate();
     }
 
@@ -82,7 +80,6 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
         return {
             sampleRate: this.sampleRate,
             defaultRecordingDuration: this.defaultRecordingDuration,
-            stopWaitingRecordDuration: this.stopWaitingRecordDuration,
         };
     }
 
@@ -100,10 +97,8 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
         e.preventDefault();
         this.sampleRate = Number(this.tempConfig.sampleRate);
         this.defaultRecordingDuration = Number(this.tempConfig.defaultRecordingDuration);
-        this.stopWaitingRecordDuration = Number(this.tempConfig.stopWaitingRecordDuration);
-        await this.setConfig("sampleRate", this.sampleRate);
-        await this.setConfig("defaultRecordingDuration", this.defaultRecordingDuration);
-        await this.setConfig("stopWaitingRecordDuration", this.stopWaitingRecordDuration);
+        await this.setRecordVariable("sampleRate", this.sampleRate);
+        await this.setRecordVariable("defaultRecordingDuration", this.defaultRecordingDuration);
         this.editing = false;
     }
 
@@ -125,10 +120,6 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
                             <label>Default Recording Duration (ms)</label>
                             <input type="number" .value="${this.tempConfig.defaultRecordingDuration}" min="100" step="100" @input="${e => this._updateField(e, 'defaultRecordingDuration')}">
                         </div>
-                        <div class="input-group">
-                            <label>Stop Waiting Record Duration (ms)</label>
-                            <input type="number" .value="${this.tempConfig.stopWaitingRecordDuration}" min="100" step="10" @input="${e => this._updateField(e, 'stopWaitingRecordDuration')}">
-                        </div>
                         <button type="submit">Save</button>
                         <button type="button" @click="${this._cancelEdit}">Cancel</button>
                     </form>
@@ -140,10 +131,6 @@ class AudioRecordingConfigurationPanel extends ConfigurationPanel {
                     <div class="input-group">
                         <label>Default Recording Duration (ms)</label>
                         <div>${this.defaultRecordingDuration}</div>
-                    </div>
-                    <div class="input-group">
-                        <label>Stop Waiting Record Duration (ms)</label>
-                        <div>${this.stopWaitingRecordDuration}</div>
                     </div>
                     <button @click="${this._startEdit}">Edit</button>
                 `}

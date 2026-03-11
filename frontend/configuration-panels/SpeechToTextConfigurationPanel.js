@@ -77,11 +77,11 @@ class SpeechToTextConfigurationPanel extends ConfigurationPanel {
 
     async connectedCallback() {
         super.connectedCallback();
-        this.secondsToLooseText = await this.getConfig("secondsToLooseText");
-        this.activationKeywords = await this.getConfig("activationKeywords");
-        this.modelName = await this.getConfig("modelName");
-        this.translateToEnglish = await this.getConfig("translateToEnglish");
-        this.splitOnWord = await this.getConfig("splitOnWord");
+        this.secondsToLooseText = await this.getRecordVariable("secondsToLooseText");
+        this.activationKeywords = await this.getRecordVariable("activationKeywords");
+        this.modelName = await this.getRecordVariable("modelName");
+        this.translateToEnglish = await this.getRecordVariable("translateToEnglish");
+        this.splitOnWord = await this.getRecordVariable("splitOnWord");
         this.requestUpdate();
     }
 
@@ -112,11 +112,11 @@ class SpeechToTextConfigurationPanel extends ConfigurationPanel {
         this.modelName = this.tempConfig.modelName;
         this.translateToEnglish = !!this.tempConfig.translateToEnglish;
         this.splitOnWord = !!this.tempConfig.splitOnWord;
-        await this.setConfig("secondsToLooseText", this.secondsToLooseText);
-        await this.setConfig("activationKeywords", this.activationKeywords);
-        await this.setConfig("modelName", this.modelName);
-        await this.setConfig("translateToEnglish", this.translateToEnglish);
-        await this.setConfig("splitOnWord", this.splitOnWord);
+        await this.setRecordVariable("secondsToLooseText", this.secondsToLooseText);
+        await this.setRecordVariable("activationKeywords", this.activationKeywords);
+        await this.setRecordVariable("modelName", this.modelName);
+        await this.setRecordVariable("translateToEnglish", this.translateToEnglish);
+        await this.setRecordVariable("splitOnWord", this.splitOnWord);
         this.editing = false;
     }
 

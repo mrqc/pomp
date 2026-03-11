@@ -29,22 +29,22 @@ export class DatabaseConnector {
 
         await this.database.exec(`
             create table if not exists LLMProvider (
-                id integer auto_increment primary key,
+                id integer primary key autoincrement,
                 name varchar (40) unique, 
                 baseUrl text not null,
                 apiKey text not null,
-                apiText not null,
+                api text not null,
                 status text check(status in ('active', 'inactive')) not null
             )
         `);
         await this.database.exec(`
             create table if not exists LLMProviderModel (
-                id integer auto_increment primary key,
-                llmProviderId varchar(40),
-                modelId varchar(70) not null,
-                modelName not null,
+                id integer primary key autoincrement,
+                llmProviderId integer not null,
+                modelId text not null,
+                modelName text not null,
                 reasoning integer not null,
-                inputText not null,
+                inputType text not null,
                 costInput real not null,
                 costOutput real not null,
                 costCacheRead real not null,
@@ -57,8 +57,7 @@ export class DatabaseConnector {
             )
         `);
         await this.ensureIntConfig('AudioRecording', 'sampleRate', 16000);
-        await this.ensureIntConfig('AudioRecording', 'defaultRecordingDuration', 3000);
-        await this.ensureIntConfig('AudioRecording', 'stopWaitingRecordDuration', 600);
+        await this.ensureFloatConfig('AudioRecording', 'defaultRecordingDuration', 0.25);
         await this.ensureIntConfig('SpeechToText', 'secondsToLooseText', 10);
         await this.ensureStringConfig('SpeechToText', 'activationKeywords', "buddy");
         await this.ensureStringConfig('SpeechToText', 'modelName', 'small.en');
@@ -73,15 +72,30 @@ export class DatabaseConnector {
             this.database.all(
                 `select * from LLMProvider`,
                 [],
-                (error: Error | null, rows: any[]) => {
+                async (error: Error | null, rows: any[]) => {
                     if (error) {
                         this.logger.error("Error fetching llm providers: " + error);
                         reject(error);
                     } else {
-                        rows.map(async row => {
-                            row.models = await this.getLLMProviderModels(row.id);
-                        })
-                        resolve(rows && rows.length > 0 ? rows : null);
+                        try {
+                            if (rows && rows.length > 0) {
+                                const promises = rows.map(async row => {
+                                    try {
+                                        row.models = await this.getLLMProviderModels(row.id) || [];
+                                    } catch (err) {
+                                        this.logger.error(`Failed to load models for provider ${row.id}: ${err}`);
+                                        row.models = [];
+                                    }
+                                });
+                                await Promise.all(promises);
+                                resolve(rows);
+                            } else {
+                                resolve(null);
+                            }
+                        } catch (e) {
+                            this.logger.error("Error processing llm providers: " + e);
+                            reject(e);
+                        }
                     }
                 }
             );
@@ -300,17 +314,16 @@ export class DatabaseConnector {
         });
     }
 
-    public async saveLLMProvider(id: number, providerConfig: any): Promise<void> {
-        // Upsert LLMProvider
+    public async saveLLMProvider(providerId: number, providerConfig: any): Promise<void> {
         return new Promise(async (resolve, reject) => {
-            const name = providerConfig.name || `provider_${id}`;
+            const name = providerConfig.name || `provider_${providerId}`;
             const baseUrl = providerConfig.baseUrl || '';
             const apiKey = providerConfig.apiKey || '';
-            const apiText = providerConfig.api ? JSON.stringify(providerConfig.api) : '';
+            const api = providerConfig.api || '';
             const status = providerConfig.status || 'active';
             this.database.run(
-                `insert or replace into LLMProvider (id, name, baseUrl, apiKey, apiText, status) values (?, ?, ?, ?, ?, ?)`,
-                [id, name, baseUrl, apiKey, apiText, status],
+                `insert or replace into LLMProvider (id, name, baseUrl, apiKey, api, status) values (?, ?, ?, ?, ?, ?)`,
+                [providerId, name, baseUrl, apiKey, api, status],
                 (error: Error | null) => {
                     if (error) {
                         this.logger.error("Error saving LLMProvider: " + error);
@@ -319,22 +332,23 @@ export class DatabaseConnector {
                     }
                     // Upsert models if present
                     if (Array.isArray(providerConfig.models)) {
-                        const modelOps = providerConfig.models.map((model: any) => {
+                        const modelOps = providerConfig.models.map((model: any, idx: number) => {
                             return new Promise<void>((res, rej) => {
-                                const modelId = model.id;
-                                const modelName = model.name;
+                                const id = idx;
+                                const modelId = model.modelId;
+                                const modelName = model.modelName;
                                 const reasoning = model.reasoning ? 1 : 0;
-                                const inputText = Array.isArray(model.input) ? model.input.join(',') : '';
-                                const costInput = model.cost?.input ?? 0;
-                                const costOutput = model.cost?.output ?? 0;
-                                const costCacheRead = model.cost?.cacheRead ?? 0;
-                                const costCacheWrite = model.cost?.cacheWrite ?? 0;
+                                const inputType = model.inputType;
+                                const costInput = model.costInput ?? 0;
+                                const costOutput = model.costOutput ?? 0;
+                                const costCacheRead = model.costCacheRead ?? 0;
+                                const costCacheWrite = model.costCacheWrite ?? 0;
                                 const contextWindow = model.contextWindow ?? 0;
                                 const maxTokens = model.maxTokens ?? 0;
                                 const status = model.status || 'active';
                                 this.database.run(
-                                    `insert or replace into LLMProviderModel (llmProviderId, modelId, modelName, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                                    [id, modelId, modelName, reasoning, inputText, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
+                                    `insert or replace into LLMProviderModel (id, llmProviderId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                    [id, providerId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
                                     (err: Error | null) => {
                                         if (err) {
                                             this.logger.error("Error saving LLMProviderModel: " + err);
@@ -354,6 +368,22 @@ export class DatabaseConnector {
                     }
                 }
             );
+        });
+    }
+
+    public async deleteAllLLMProviders(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.database.exec(`
+                delete from LLMProviderModel;
+                delete from LLMProvider;
+            `, (error: Error | null) => {
+                if (error) {
+                    this.logger.error("Error deleting all LLM providers: " + error);
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
         });
     }
 

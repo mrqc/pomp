@@ -70,8 +70,8 @@ class TextToSpeechConfigurationPanel extends ConfigurationPanel {
 
     async connectedCallback() {
         super.connectedCallback();
-        this.modelId = await this.getConfig("modelId");
-        this.textSpeed = await this.getConfig("textSpeed");
+        this.modelId = await this.getRecordVariable("modelId");
+        this.textSpeed = await this.getRecordVariable("textSpeed");
         this.requestUpdate();
     }
 
@@ -96,8 +96,8 @@ class TextToSpeechConfigurationPanel extends ConfigurationPanel {
         e.preventDefault();
         this.modelId = this.tempConfig.modelId;
         this.textSpeed = parseFloat(this.tempConfig.textSpeed) || 1.0;
-        await this.setConfig("modelId", this.modelId);
-        await this.setConfig("textSpeed", this.textSpeed);
+        await this.setRecordVariable("modelId", this.modelId);
+        await this.setRecordVariable("textSpeed", this.textSpeed);
         this.editing = false;
     }
 

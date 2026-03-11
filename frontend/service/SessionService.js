@@ -28,6 +28,6 @@ export class SessionService {
 
     async subscribe(callback) {
         this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
-        this.clientServerSynchronization.subscribeOnRecord('Sessions', 'list', callback);
+        this.clientServerSynchronization.subscribeOnRecordVariable('Sessions', 'list', callback);
     }
 }

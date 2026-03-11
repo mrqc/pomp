@@ -17,7 +17,7 @@ export class Configuration {
         this.config = yaml.parse(fileContent);
         this.logger.info(this.config);
     }
-    
+
     getConfig(configName: string): any {
         return this.config[configName];
     }

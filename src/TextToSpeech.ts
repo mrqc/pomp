@@ -30,13 +30,13 @@ export class TextToSpeech extends Controller {
         this.textToSpeechModel = await KokoroTTS.from_pretrained(TextToSpeech.modelId, {
             dtype: "fp32",
         });
-        const stream = this.textToSpeechModel!.stream(
-            this.splitter,
-            { 
-                speed: TextToSpeech.textSpeed, 
-                split_pattern: new RegExp('\t') 
-            });
         if ( !InternalLogger.isDebug()) {
+            const stream = this.textToSpeechModel!.stream(
+                this.splitter,
+                { 
+                    speed: TextToSpeech.textSpeed, 
+                    split_pattern: new RegExp('\t') 
+                });
             (async () => {
                 for await (const {text, phonemes, audio} of stream) {
                     this.logger.info(JSON.stringify({text, phonemes}));
@@ -51,14 +51,14 @@ export class TextToSpeech extends Controller {
     private async loadConfigsAndSubscribe() {
         TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
         TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
-        this.loadControllerConfiguration("textSpeed", TextToSpeech.textSpeed);
-        this.loadControllerConfiguration("modelId", TextToSpeech.modelId);
-        this.subscribeControllerRecord("textSpeed", async (value: any) => {
+        this.setControllerRecordVariable("textSpeed", TextToSpeech.textSpeed);
+        this.setControllerRecordVariable("modelId", TextToSpeech.modelId);
+        this.subscribeControllerRecordVariable("textSpeed", async (value: any) => {
             await this.setControllerRecordConfiguration("textSpeed", value);
             TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
             this.sendInfo("Text speed changed to " + TextToSpeech.textSpeed)
         });
-        this.subscribeControllerRecord("modelId", async (value: any) => {
+        this.subscribeControllerRecordVariable("modelId", async (value: any) => {
             await this.setControllerRecordConfiguration("modelId", value);
             TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
             this.sendInfo("Model id changed to " + TextToSpeech.modelId)

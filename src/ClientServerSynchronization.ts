@@ -26,16 +26,16 @@ export class ClientServerSynchronization {
         try {
             let record = this.client.record.getRecord(recordName);
             record.whenReady((record) => {
-                this.logger.info("Setting value '" + value + "' for variable " + variableName + " on record " + recordName)
+                this.logger.info("Setting value '" + JSON.stringify(value) + "' for variable " + variableName + " on record " + recordName)
                 record.set(variableName, value);
-                this.logger.info("Value '" + value + "' for variable " + variableName + " set on record " + recordName)
+                this.logger.info("Value '" + JSON.stringify(record.get(variableName)) + "' for variable " + variableName + " set on record " + recordName)
             });
         } catch (error) {
             this.logger.error("Error setting value '" + value + "' for variable " + variableName + " on record " + recordName + ": " + error)
         }
     }
     
-    subscribeOnRecord(recordName: string, variableName: string, callback: (value: any) => void) {
+    subscribeOnRecordVariable(recordName: string, variableName: string, callback: (value: any) => void) {
         try {
             let record = this.client.record.getRecord(recordName);
             record.subscribe(variableName, callback);
@@ -43,7 +43,7 @@ export class ClientServerSynchronization {
             this.logger.error("Error subscribing to variable " + variableName + " on record " + recordName + ": " + error)
         }
     }
-    
+
     sendError(message: string) {
         this.client.event.emit("Errors", message);
     }
