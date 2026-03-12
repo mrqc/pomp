@@ -1,6 +1,7 @@
 import ml5 from 'ml5';
 import {html, LitElement, css} from "lit";
 import p5 from 'p5';
+import {ClientServerSynchronization} from "./service/ClientServerSynchronization.js";
 
 export class InteractionLayer extends LitElement {
     static styles = css`
@@ -46,6 +47,7 @@ export class InteractionLayer extends LitElement {
     canvasHeight = window.innerHeight;
     isPinching = false;
     
+    
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('resize', this.handleResize.bind(this));
@@ -85,17 +87,20 @@ export class InteractionLayer extends LitElement {
             sketch.windowResized = () => {
                 this.handleResize();
             };
-            sketch.draw = () => {
+            sketch.draw = async () => {
                 sketch.clear();
-                sketch.image(this.video, 
-                    this.canvasWidth / 2 - videoWidth / 2, 
-                    this.canvasHeight / 2 - videoHeight / 2, 
-                    videoWidth, 
+                sketch.image(this.video,
+                    this.canvasWidth / 2 - videoWidth / 2,
+                    this.canvasHeight / 2 - videoHeight / 2,
+                    videoWidth,
                     videoHeight);
                 if (this.hands.length > 0) {
                     let hand = this.hands[0];
                     let index = hand.index_finger_tip;
                     let thumb = hand.thumb_tip;
+                    let middle = hand.middle_finger_tip;
+                    let ring = hand.ring_finger_tip;
+                    let pinky = hand.pinky_finger_tip;
 
                     let paddingX = 800;
                     let paddingY = 500;
@@ -107,14 +112,18 @@ export class InteractionLayer extends LitElement {
                     let ratioY = y / (videoHeight);
                     let transformedX = (this.canvasWidth) * ratioX;
                     let transformedY = (this.canvasHeight) * ratioY;
-                    
+
                     let paddingXRatio = (x - videoWidth / 2) / (videoWidth / 2);
                     let paddingYRatio = (y - videoHeight / 2) / (videoHeight / 2);
-                    
-                    let distance = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+
+                    let d1 = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+                    let d2 = sketch.dist(middle.x, middle.y, thumb.x, thumb.y);
+                    let d3 = sketch.dist(ring.x, ring.y, thumb.x, thumb.y);
+                    let d4 = sketch.dist(pinky.x, pinky.y, thumb.x, thumb.y);
+
                     let domX = (this.canvasWidth - transformedX) - paddingX * paddingXRatio;
                     let domY = (transformedY) + paddingY * paddingYRatio;
-                    
+
                     function getDeepestElementFromPoint(x, y) {
                         let el = document.elementFromPoint(x, y);
                         let deepest = el;
@@ -128,7 +137,16 @@ export class InteractionLayer extends LitElement {
                         return deepest;
                     }
 
-                    if (distance < 20) {
+                    if (d1 < 25 && d2 < 25 && d3 < 25 && d4 < 25) {
+                        console.log(d1 + " " + d2 + " " + d3 + " " + d4)
+                        if (!this.isPinching) {
+                            const clientServerSync = await ClientServerSynchronization.getInstance();
+                            clientServerSync.setValue("SpeechContext", "content", "");
+                            return
+                        }
+                    }
+
+                    if (d1 < 20) {
                         if (!this.isPinching) {
                             this.isPinching = true;
                             const target = getDeepestElementFromPoint(domX, domY);
@@ -150,12 +168,12 @@ export class InteractionLayer extends LitElement {
                                     target.focus();
                                     if (target.type === "checkbox" || target.type === "radio") {
                                         target.checked = !target.checked;
-                                        target.dispatchEvent(new Event('change', { bubbles: true }));
+                                        target.dispatchEvent(new Event('change', {bubbles: true}));
                                     }
                                 } else if (tag === "select") {
                                     target.focus();
                                     target.dispatchEvent(new MouseEvent('mousedown', event));
-                                    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+                                    target.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true}));
                                 }
                             }
                         }

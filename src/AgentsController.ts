@@ -157,8 +157,12 @@ export class AgentsController extends Controller {
                 overallResponseContent = this.extractTextFromResponse(messages, overallResponseContent);
                 let intentions = this.getIntentionContents(overallResponseContent);
                 let speakIntention = intentions.filter((intention) => intention.tagName == "SPEAK")[0]
-                this.logger.info("intentions: " + JSON.stringify(intentions))
+                let contentIntention = intentions.filter((intention) => intention.tagName == "CONTENT")[0]
                 overallResponseContent = this.removeIntentionContents(overallResponseContent);
+                this.logger.info("intentions: " + JSON.stringify(intentions))
+                if (contentIntention !== undefined) {
+                    this.clientServerSynchronization.loadRecordValue("SpeechContext", "content", contentIntention.content);
+                }
                 if (speakIntention !== undefined) {
                     this.textToSpeech.say(speakIntention.content);
                 }

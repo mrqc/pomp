@@ -227,6 +227,7 @@ class AppLayout extends LitElement {
 
                 <nav class="sidebar">
                     <ul>
+                        <li @click="${() => this.handleMenuClick('workspace')}" class="${this.selectedPanel === 'workspace' ? 'active' : ''}">Workspace</li>
                         ${this.sessions && this.sessions.length > 0 ? this.sessions.map(session => html`
                             <li
                                 @click="${() => this.handleSessionClick(session)}"
@@ -257,6 +258,8 @@ class AppLayout extends LitElement {
                         <speech-to-text-configuration-panel></speech-to-text-configuration-panel>` : ''}
                     ${this.selectedPanel === 'text-to-speech' ? html`
                         <text-to-speech-configuration-panel></text-to-speech-configuration-panel>` : ''}
+                    ${this.selectedPanel === 'workspace' ? html`
+                        <workspace-panel></workspace-panel>` : ''}
                 </main>
             </div>
         `;

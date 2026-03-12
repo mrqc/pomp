@@ -87,9 +87,10 @@ export class AudioPlaying extends Controller {
         if (this.isPlaying) {
             return;
         }
-        this.logger.info("Acquire lock")
+        this.logger.info("Acquire lock" + this.audioMutex.isLocked)
         await this.audioMutex.acquire();
         if (this.queue.length === 0) {
+            this.logger.info("3Release Lock")
             this.audioMutex.release();
             return;
         }
@@ -97,11 +98,12 @@ export class AudioPlaying extends Controller {
         const next = this.queue.shift();
         if ( !next) {
             this.isPlaying = false;
+            this.logger.info("2Release Lock")
             this.audioMutex.release();
             return;
         }
         try {
-            this.logger.info("playing " + next.filePath)
+            this.logger.info("playing " + next.filePath + " " + this.audioMutex.isLocked);
             await wavPlayer.play({
                 path: next.filePath,
                 sync: true
@@ -111,6 +113,7 @@ export class AudioPlaying extends Controller {
             console.error('Error playing file:', next.filePath, err);
         } finally {
             this.isPlaying = false;
+            this.logger.info("1Release Lock")
             this.audioMutex.release();
             this.playNext();
         }

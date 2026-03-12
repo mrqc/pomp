@@ -155,6 +155,7 @@ export class AudioRecording extends Controller {
             this.currentOutputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
             let audioIo = this.initAudioDevice();
             if (audioIo == null) {
+                this.audioMutex.release(); // Explicitly release if init fails and we acquired lock
                 return;
             }
             if (this.currentWavFileWriter) {
@@ -173,6 +174,9 @@ export class AudioRecording extends Controller {
     }
     
     private async stopRecording() {
+        if (!this.isRecording) {
+            return;
+        }
         this.isRecording = false;
         const writer = this.currentWavFileWriter;
         if (writer) {
