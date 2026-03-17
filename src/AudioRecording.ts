@@ -1,4 +1,3 @@
-import {Worker} from "worker_threads";
 import path from "node:path";
 import * as portAudio from "naudiodon-no-segfault";
 import * as wav from "wav";
@@ -37,16 +36,12 @@ export class AudioRecording extends Controller {
     constructor(audioMutex: Mutex, speechToText: SpeechToText, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector, textToSpeech: TextToSpeech, audioPlaying: AudioPlaying) {
         super(clientServerSynchronization, databaseConnector, "AudioRecording");
         AudioRecording.cleanup();
-        this.workerOnMessage = this.workerOnMessage.bind(this);
-        this.workerError = this.workerError.bind(this);
-        this.workerExit = this.workerExit.bind(this);
         this.startRecording = this.startRecording.bind(this);
         this.textToSpeech = textToSpeech;
         this.audioMutex = audioMutex;
         this.speechToText = speechToText;
         this.audioPlaying = audioPlaying;
         fs.ensureDirSync(AudioRecording.RECORDINGS_DIR);
-        this.initWorker();
     }
     
     async init() {
@@ -70,24 +65,6 @@ export class AudioRecording extends Controller {
         });
     }
 
-    private initWorker() {
-        const audioRecordingsWorker = new Worker(path.resolve(__dirname, 'AudioRecordingWorker.ts'));
-        audioRecordingsWorker.postMessage("Start");
-        audioRecordingsWorker.on('message', this.workerOnMessage);
-        audioRecordingsWorker.on('error', this.workerError);
-        audioRecordingsWorker.on('exit', this.workerExit);
-    }
-    
-    private async workerError(error: any) {
-        this.logger.error('Worker error: ' + error);
-        this.audioMutex.release();
-    }
-
-    private async workerExit(code: any) {
-        this.logger.info('Worker exited with code ' + code);
-        this.audioMutex.release();
-    }
-    
     private initAudioDevice(): IoStreamRead | null {
         this.logger.info("Initializing Audio Device");
         if (this.audioDevice != null) {
@@ -205,10 +182,6 @@ export class AudioRecording extends Controller {
         this.isRecording = false;
     }
 
-    private workerOnMessage(message: any) {
-        this.logger.info("Thread for audio recording running")
-    }
-    
     public static cleanup() {
         if ( !InternalLogger.isDebug()) {
             fs.removeSync(AudioRecording.RECORDINGS_DIR);

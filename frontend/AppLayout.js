@@ -1,5 +1,6 @@
 import {LitElement, html, css} from 'lit';
 import {SessionService, Session} from './service/SessionService.js';
+import './NewSessionPanel.js';
 
 class AppLayout extends LitElement {
     static styles = css`
@@ -205,11 +206,16 @@ class AppLayout extends LitElement {
     handleSessionClick(session) {
         this.selectedPanel = 'session';
         this.selectedSession = session;
+        const event = new CustomEvent('session-changed', {
+            detail: session,
+            composed: true
+        });
+        this.dispatchEvent(event);
     }
 
     async subscribeSessions() {
         await this.sessionService.subscribe((data) => {
-            console.log(JSON.stringify(data));
+            console.log("All Sessions: " + JSON.stringify(data));
             this.sessions = data;
             this.requestUpdate();
         });
@@ -228,6 +234,7 @@ class AppLayout extends LitElement {
                 <nav class="sidebar">
                     <ul>
                         <li @click="${() => this.handleMenuClick('workspace')}" class="${this.selectedPanel === 'workspace' ? 'active' : ''}">Workspace</li>
+                        <li @click="${() => this.handleMenuClick('new-session')}" class="${this.selectedPanel === 'new-session' ? 'active' : ''}">New Session</li>
                         ${this.sessions && this.sessions.length > 0 ? this.sessions.map(session => html`
                             <li
                                 @click="${() => this.handleSessionClick(session)}"
@@ -247,6 +254,9 @@ class AppLayout extends LitElement {
                 </nav>
 
                 <main class="main-content">
+                    ${this.selectedPanel === 'new-session' ? html`
+                        <new-session-panel></new-session-panel>
+                    ` : ''}
                     ${this.selectedPanel === 'session' && this.selectedSession ? html`
                         <session-panel .session="${this.selectedSession}"></session-panel>
                     ` : ''}

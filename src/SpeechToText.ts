@@ -118,7 +118,7 @@ export class SpeechToText extends Controller {
                 this.logger.info("Activation via keyword in context window")
                 let currentContextWindow = this.getCurrentStreamText();
                 this.phrases = []
-                await this.agentsController.startSessionByActivationWordSession(currentContextWindow);
+                await this.agentsController.startSessionByActivationWord(currentContextWindow);
             } else if ( !this.isActive()) {
                 this.logger.info("Cleaning up context window")
                 this.removeOutdatedPhrasesFromContextWindow();

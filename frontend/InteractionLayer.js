@@ -151,7 +151,6 @@ export class InteractionLayer extends LitElement {
                             this.isPinching = true;
                             const target = getDeepestElementFromPoint(domX, domY);
                             if (target) {
-                                console.log(target.id + " " + target.tagName);
                                 let event = {
                                     view: window,
                                     bubbles: true,
