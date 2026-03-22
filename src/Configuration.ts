@@ -14,7 +14,7 @@ export class Configuration {
 
     constructor() {
         const fileContent = fs.readFileSync(Configuration.CONFIG_FILE, 'utf8');
-        this.config = yaml.parse(fileContent);
+        this.config = yaml.parse(JSON.stringify(fileContent));
         this.logger.info(this.config);
     }
 

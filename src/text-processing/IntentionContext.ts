@@ -2,12 +2,17 @@ import type {Intention} from './Intention.ts'
 import type {AgentMessage} from "@mariozechner/pi-agent-core";
 import type {TextContent} from "@mariozechner/pi-ai/dist/types";
 import {InternalLogger} from "../LogConfig.ts";
+import {fileURLToPath} from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface IntentionContext {
-    speak: Intention,
-    content: Intention,
-    wait: Intention,
-    go: Intention,
+    speakIntention: Intention,
+    contentIntention: Intention,
+    waitIntention: Intention,
+    goIntention: Intention,
     text: string
 }
 
@@ -23,10 +28,10 @@ export class IntentionContextService {
         let goIntention = this.getIntentionContent(intentions, "GO")
         overallResponseContent = this.removeIntentionContents(overallResponseContent);
         return {
-            speak: speakIntention,
-            content: contentIntention,
-            wait: waitIntention,
-            go: goIntention,
+            speakIntention: speakIntention,
+            contentIntention: contentIntention,
+            waitIntention: waitIntention,
+            goIntention: goIntention,
             text: overallResponseContent
         }
     }

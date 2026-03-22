@@ -33,7 +33,7 @@ export class ClientServerSynchronizationService {
         await this.client.login()
     }
     
-    loadRecordValue(recordName: string, variableName: string, value: any) {
+    setRecord(recordName: string, variableName: string, value: any) {
         try {
             let record = this.client.record.getRecord(recordName);
             record.whenReady((record) => {

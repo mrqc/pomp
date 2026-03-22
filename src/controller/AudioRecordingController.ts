@@ -50,8 +50,8 @@ export class AudioRecordingController {
     private async loadConfigsAndSubscribe() {
         AudioRecordingController.sampleRate = await this.databaseConnector.getIntegerConfig("AudioRecording", "sampleRate");
         AudioRecordingController.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("AudioRecording", "defaultRecordingDuration");
-        this.clientServerSynchronization.loadRecordValue("AudioRecording", "sampleRate", AudioRecordingController.sampleRate);
-        this.clientServerSynchronization.loadRecordValue("AudioRecording", "defaultRecordingDuration", AudioRecordingController.defaultRecordingDuration);
+        this.clientServerSynchronization.setRecord("AudioRecording", "sampleRate", AudioRecordingController.sampleRate);
+        this.clientServerSynchronization.setRecord("AudioRecording", "defaultRecordingDuration", AudioRecordingController.defaultRecordingDuration);
         this.clientServerSynchronization.subscribeOnRecordVariable("AudioRecording","sampleRate", async (value: any) => {
             await this.databaseConnector.setConfig("AudioRecording", "sampleRate", value);
             AudioRecordingController.sampleRate = await this.databaseConnector.getIntegerConfig("AudioRecording", "sampleRate");

@@ -1,27 +1,18 @@
 import {InternalLogger} from "../LogConfig.js";
 import {
     AgentSession,
-    AuthStorage,
-    bashTool,
-    createAgentSession,
-    DefaultResourceLoader,
-    ModelRegistry,
-    readTool,
-    SessionManager
 } from "@mariozechner/pi-coding-agent";
 import {fileURLToPath} from "url";
 import path from "path";
 import type {TextToSpeechController} from "./TextToSpeechController.ts";
-import type {Message, TextContent} from "@mariozechner/pi-ai/dist/types";
 import {uuidv7} from "uuidv7";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
-import type { ProviderConfigInput } from "../mapper/ProviderConfigInput.ts";
 import {Mutex} from "es-toolkit";
 import {join} from "node:path";
 import {readFile} from "node:fs/promises";
-import type {AgentMessage} from "@mariozechner/pi-agent-core";
-import {type IntentionContext, IntentionContextService} from "../text-processing/IntentionContext.ts";
+import {IntentionContextService} from "../text-processing/IntentionContext.ts";
+import {LLMSessionsService} from "../services/LLMSessionsService.ts";
 
 enum InternalAgentSessionType {
     MAIN
@@ -32,7 +23,20 @@ interface InternalAgentSession {
     agentSession: AgentSession;
     timestamp: number;
     type: InternalAgentSessionType,
-    index: number
+    workspace: string
+}
+
+interface PromptResponseMessage {
+    id: string;
+    text: string;
+    timestamp: number;
+}
+
+interface ExternalAgentSession {
+    id: string;
+    title: string;
+    content: [];
+    workspace: string;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,32 +49,25 @@ export class AgentsController {
     private logger = new InternalLogger(__filename);
     private internalAgentSessions: InternalAgentSession[] = [];
     private textToSpeech: TextToSpeechController;
-    private authStorage = new AuthStorage();
-    private modelRegistry = new ModelRegistry(this.authStorage);
     private modelRegistryMutex: Mutex = new Mutex();
+    private llmSessionsService = new LLMSessionsService();
     
     private async getFileContent(filename: string): Promise<string> {
         const filepath = join(__dirname, "..", filename);
         return await readFile(filepath, "utf-8");
     }
 
-    private loader = new DefaultResourceLoader({
-        cwd: process.cwd()
-    });
-
     constructor(textToSpeech: TextToSpeechController) {
         this.textToSpeech = textToSpeech;
     }
     
     async init() {
-        await this.registerProvider();
-        await this.loadSkills();
         await this.loadConfigsAndSubscribe();
     }
     
     private async loadConfigsAndSubscribe() {
         let providers = await this.databaseConnector.getLLMProvider();
-        this.clientServerSynchronization.loadRecordValue("AgentsController", "llmProviders", providers);
+        this.clientServerSynchronization.setRecord("AgentsController", "llmProviders", providers);
         this.clientServerSynchronization.subscribeOnRecordVariable("AgentsController", "llmProviders", async (value: any)=>  {
             this.logger.info("Received LLM providers config update")
             if (Array.isArray(value)) {
@@ -83,8 +80,8 @@ export class AgentsController {
                 this.logger.info(`Stored ${value.length} LLM provider(s) from config update.`);
                 try {
                     await this.modelRegistryMutex.acquire();
-                    this.modelRegistry = new ModelRegistry(this.authStorage);
-                    await this.registerProvider();
+                    await this.llmSessionsService.init();
+                    await this.llmSessionsService.registerProvider();
                 } finally {
                     this.modelRegistryMutex.release();
                 }
@@ -96,18 +93,15 @@ export class AgentsController {
         });
     }
     
-    public async startSessionByActivationWord(text: string) {
-        let llmProviders = await this.databaseConnector.getLLMProvider();
-        let allModels = llmProviders ? llmProviders.flatMap(provider => provider.models || []) : [];
-        if (llmProviders == null || llmProviders.length == 0 || allModels.length == 0) {
+    public async prompt(text: string) {
+        if ( !await this.llmSessionsService.isLLMProviderAndModelsConfigured()) {
             this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
             return;
         }
         let session: AgentSession | undefined = undefined;
         try {
             await this.modelRegistryMutex.acquire();
-            session = this.internalAgentSessions
-                .filter((anInternalSession) => 
+            session = this.internalAgentSessions.filter((anInternalSession) => 
                     anInternalSession.type == InternalAgentSessionType.MAIN)[0]?.agentSession
             if (session == undefined) {
                 session = await this.createSession(text)
@@ -123,14 +117,7 @@ export class AgentsController {
     }
     
     private async createSession(text: string): Promise<AgentSession | undefined> {
-        let sessionCreationResult = await createAgentSession({
-            tools: [readTool, bashTool],
-            resourceLoader: this.loader,
-            sessionManager: SessionManager.inMemory(),
-            authStorage: this.authStorage,
-            modelRegistry: this.modelRegistry,
-        });
-        let session = sessionCreationResult.session;
+        let session = await this.llmSessionsService.getNewSession();
         if (session == null) {
             return;
         }
@@ -139,37 +126,28 @@ export class AgentsController {
             if ("agent_end" == event.type) {
                 this.logger.info(JSON.stringify(event, null, 2));
                 let lastUserMessageIndex = -1;
-                for (let i = event.messages.length - 1; i >= 0; i--) {
-                    if (event.messages[i]?.role == "user") {
-                        lastUserMessageIndex = i;
+                for (let messageIndex = event.messages.length - 1; messageIndex >= 0; messageIndex--) {
+                    if (event.messages[messageIndex]?.role == "user") {
+                        lastUserMessageIndex = messageIndex;
                         break;
                     }
                 }
                 let relevantMessages = lastUserMessageIndex != -1 ? event.messages.slice(lastUserMessageIndex + 1) : event.messages;
-                let messages = relevantMessages.filter((message: any) => message.role == "assistant");
-                let intentionContext = this.intentionContextService.getIntentionContext(messages)
+                let assistantMessages = relevantMessages.filter((message: any) => message.role == "assistant");
+                let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
-                if (intentionContext.content !== undefined) {
-                    externalSession.workspace = intentionContext.content.text
-                    this.clientServersynchronization.updateList("Sessions", "list", this.externalAgentSessions)
-                    this.clientServerSynchronization.sendEvent("workspace-changed", {
-                        sessionId: externalSession.id,
-                        workspace: intentionContext.content
-                    });
+                if (intentionContext.contentIntention !== undefined) {
+                    internalSession.workspace = intentionContext.contentIntention.text;
+                    this.clientServerSynchronization.setRecord("session-" + internalSession.id, "workspace", intentionContext.contentIntention.text)
                 }
-                if (intentionContext.speak !== undefined) {
-                    this.logger.info(intentionContext.speak.text)
-                    this.textToSpeech.say(intentionContext.speak.text);
+                if (intentionContext.speakIntention !== undefined) {
+                    this.textToSpeech.say(intentionContext.speakIntention.text);
                     let newMessage = {
                         id: uuidv7().toString(),
-                        text: intentionContext.speak.text,
+                        text: intentionContext.speakIntention.text,
                         timestamp: Date.now()
-                    } as ExternalAgentMessage
-                    externalSession.content.push(newMessage)
-                    this.clientServerSynchronization.sendEvent("new-message", {
-                        sessionId: externalSession.id,
-                        message: newMessage
-                    })
+                    } as PromptResponseMessage;
+                    this.clientServerSynchronization.addListEntry("messages-of-session-" + internalSession.id, "message-" + newMessage.id, newMessage);
                 }
             }
         });
@@ -177,6 +155,10 @@ export class AgentsController {
         await session.steer(await this.getFileContent("INTENTION.md"))
         await session.steer(await this.getFileContent("OWNER.md"))
         await session.steer(await this.getFileContent("SOUL.md"))
+        if (!session.isStreaming) {
+            await session.agent.continue();
+        }
+        
         this.logger.info("Providing prompt " + text + " to session")
         return session;
     }
@@ -187,65 +169,17 @@ export class AgentsController {
             agentSession: session,
             timestamp: Date.now(),
             type: InternalAgentSessionType.MAIN,
-            index: this.internalAgentSessions.length
-        };
+            workspace: "New Session"
+        } as InternalAgentSession;
         this.internalAgentSessions.push(internalSession);
         let externalSession = {
-            id: uuidv7().toString(),
+            id: internalSession.id,
             title: text.slice(0, 50) + "…",
             content: [],
-            index: this.internalAgentSessions.length,
             workspace: "New Session"
-        }
+        } as ExternalAgentSession;
         this.logger.info("Adding session " + JSON.stringify(externalSession));
-        this.clientServerSynchronization.loadRecordValue("Sessions", "list", this.externalAgentSessions);
+        this.clientServerSynchronization.addListEntry("sessions", "session-" + externalSession.id, externalSession);
         return internalSession
-    }
-    
-    async loadSkills() {
-        await this.loader.reload();
-        this.logger.info("Skills:")
-        this.loader.getSkills().skills.forEach(skill => {
-            this.logger.info('- ' + skill.name)
-        })
-        this.logger.info("Extensions:")
-        this.loader.getExtensions().extensions.forEach(extension => {
-            this.logger.info('- ' + extension.path)
-        })
-    }
-    
-    async registerProvider() {
-        let llmProvider = await this.databaseConnector.getLLMProvider();
-        if (llmProvider == null) {
-            return;
-        }
-        
-        for (let provider of llmProvider) {
-            let models = []
-            for (let llmProviderModel of provider.models) {
-                let model = {
-                    id: llmProviderModel.modelId,
-                    name: llmProviderModel.modelName,
-                    reasoning: llmProviderModel.reasoning,
-                    input: llmProviderModel.inputType.split(","),
-                    cost: {
-                        input: llmProviderModel.costInput,
-                        output: llmProviderModel.costOutput,
-                        cacheRead: llmProviderModel.costCacheRead,
-                        cacheWrite: llmProviderModel.costCacheWrite
-                    },
-                    contextWindow: llmProviderModel.contextWindow,
-                    maxTokens: llmProviderModel.maxTokens
-                }
-                models.push(model)
-            }
-            let providerConfigInput: ProviderConfigInput = {
-                baseUrl: provider.baseUrl,
-                apiKey: provider.apiKey,
-                api: provider.api,
-                models: models
-            };
-            this.modelRegistry.registerProvider(provider.name, providerConfigInput);
-        }
     }
 }

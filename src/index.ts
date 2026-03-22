@@ -22,6 +22,9 @@ const audioMutex = new Mutex();
 logger.info("Starting database connector")
 let configuration = new Configuration();
 let databaseConnector = DatabaseConnectorService.getInstance();
+await databaseConnector.migrate();
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+await delay(3000);
 logger.info("Starting client/server synchronization")
 let clientServerSynchronization = ClientServerSynchronizationService.getInstance();
 logger.info("Starting express")
@@ -29,19 +32,17 @@ let express: ExpressWrapperController = new ExpressWrapperController(configurati
 logger.info("Starting text to speech")
 let textToSpeech: TextToSpeechController = new TextToSpeechController();
 logger.info("Starting audio playing")
-let audioPlaying: AudioPlayingController = new AudioPlayingController(audioMutex, );
+let audioPlaying: AudioPlayingController = new AudioPlayingController(audioMutex);
 logger.info("Agents controller starting")
-let agentsController: AgentsController = new AgentsController(textToSpeech, );
+let agentsController: AgentsController = new AgentsController(textToSpeech);
 logger.info("Starting speech to text")
-let speechToText: SpeechToTextController = new SpeechToTextController(agentsController, );
+let speechToText: SpeechToTextController = new SpeechToTextController(agentsController);
 logger.info("Starting audio recording")
 let audioRecording: AudioRecordingController = new AudioRecordingController(audioMutex, speechToText, textToSpeech, audioPlaying);
 
 logger.info("Starting environment...")
 
 async function startup() {
-    logger.info("Database migration")
-    await databaseConnector.migrate();
     logger.info("Express listener")
     express.init();
     logger.info("Agents controller initializing")
@@ -62,7 +63,7 @@ async function startup() {
 }
 
 function gracefulShutdown(signal: string) {
-    logger.info(`\nReceived ${signal}. Shutting down gracefully...`);
+    logger.info(`Received ${signal}. Shutting down gracefully...`);
     AudioRecordingController.cleanup();
     SpeechToTextController.cleanup();
     TextToSpeechController.cleanup();

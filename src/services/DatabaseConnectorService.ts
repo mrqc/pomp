@@ -37,6 +37,7 @@ export class DatabaseConnectorService {
                 status text check(status in ('active', 'inactive')) not null
             )
         `);
+        
         await this.database.exec(`
             create table if not exists LLMProviderModel (
                 id integer primary key autoincrement,
