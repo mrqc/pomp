@@ -1,18 +1,18 @@
 import { KokoroTTS, TextSplitterStream } from "kokoro-js";
-import {InternalLogger} from "./LogConfig.js";
+import {InternalLogger} from "../LogConfig.js";
 import path from "node:path";
 import fs from "fs-extra";
 import {fileURLToPath} from "url";
 import {Controller} from "./Controller.ts";
-import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
-import type {DatabaseConnector} from "./DatabaseConnector.ts";
+import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
+import type {DatabaseConnector} from "../DatabaseConnector.ts";
 import {Logger} from "@deepstream/client/dist/src/util/logger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class TextToSpeech extends Controller {
-
+    private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly AUDIO_DIR = path.resolve(__dirname, 'audio-outputs');
     private static textSpeed = 1.4;
     private static modelId = "onnx-community/Kokoro-82M-v1.0-ONNX";
@@ -20,8 +20,8 @@ export class TextToSpeech extends Controller {
     private logger = new InternalLogger(__filename);
     private splitter = new TextSplitterStream();
 
-    constructor(clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
-        super(clientServerSynchronization, databaseConnector, "TextToSpeech");
+    constructor(databaseConnector: DatabaseConnector) {
+        super(databaseConnector);
         TextToSpeech.cleanup();
     }
 
@@ -51,17 +51,17 @@ export class TextToSpeech extends Controller {
     private async loadConfigsAndSubscribe() {
         TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
         TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
-        this.setControllerRecordVariable("textSpeed", TextToSpeech.textSpeed);
-        this.setControllerRecordVariable("modelId", TextToSpeech.modelId);
-        this.subscribeControllerRecordVariable("textSpeed", async (value: any) => {
+        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "textSpeed", TextToSpeech.textSpeed);
+        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "modelId", TextToSpeech.modelId);
+        this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "textSpeed", async (value: any) => {
             await this.setControllerRecordConfiguration("textSpeed", value);
             TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
-            this.sendInfo("Text speed changed to " + TextToSpeech.textSpeed)
+            this.clientServerSynchronization.sendGuiInfo("Text speed changed to " + TextToSpeech.textSpeed)
         });
-        this.subscribeControllerRecordVariable("modelId", async (value: any) => {
+        this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "modelId", async (value: any) => {
             await this.setControllerRecordConfiguration("modelId", value);
             TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
-            this.sendInfo("Model id changed to " + TextToSpeech.modelId)
+            this.clientServerSynchronization.sendGuiInfo("Model id changed to " + TextToSpeech.modelId)
         });
     }
 

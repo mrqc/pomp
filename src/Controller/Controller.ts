@@ -1,21 +1,10 @@
-import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
-import {DatabaseConnector} from "./DatabaseConnector.ts";
+import {DatabaseConnector} from "../DatabaseConnector.ts";
 
 export class Controller {
-    clientServerSynchronization: ClientServerSynchronization;
     databaseConnector: DatabaseConnector;
-    private recordName: string;
 
-    constructor(clientServerSynchronization: ClientServerSynchronization, 
-                databaseConnector: DatabaseConnector,
-                recordName: string) {
-        this.clientServerSynchronization = clientServerSynchronization;
+    constructor(databaseConnector: DatabaseConnector) {
         this.databaseConnector = databaseConnector;
-        this.recordName = recordName;
-    }
-    
-    subscribeControllerRecordVariable(variableName: string, callback: (value: any) => void) {
-        this.clientServerSynchronization.subscribeOnRecordVariable(this.recordName, variableName, callback);
     }
     
     async setControllerRecordConfiguration(variableName: string, value: any) {
@@ -40,17 +29,5 @@ export class Controller {
 
     async getControllerRecordBooleanConfiguration(variableName: string): Promise<boolean> {
         return await this.databaseConnector.getBooleanConfig(this.recordName, variableName);
-    }
-    
-    setControllerRecordVariable(variableName: string, value: any) {
-        this.clientServerSynchronization.loadRecordValue(this.recordName, variableName, value);
-    }
-
-    sendError(message: string) {
-        this.clientServerSynchronization.sendError(message);
-    }
-    
-    sendInfo(message: string) {
-        this.clientServerSynchronization.sendInfo(message);
     }
 }

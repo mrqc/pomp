@@ -1,4 +1,4 @@
-import {InternalLogger} from "./LogConfig.js";
+import {InternalLogger} from "../LogConfig.js";
 import {
     AgentSession,
     AuthStorage,
@@ -14,10 +14,10 @@ import path from "path";
 import type {TextToSpeech} from "./TextToSpeech.ts";
 import type {Message, TextContent} from "@mariozechner/pi-ai/dist/types";
 import {uuidv7} from "uuidv7";
-import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
-import {DatabaseConnector} from "./DatabaseConnector.ts";
+import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
+import {DatabaseConnector} from "../DatabaseConnector.ts";
 import {Controller} from "./Controller.ts";
-import type { ProviderConfigInput } from "./mapper/ProviderConfigInput.ts";
+import type { ProviderConfigInput } from "../mapper/ProviderConfigInput.ts";
 import {Mutex} from "es-toolkit";
 import {join} from "node:path";
 import {readFile} from "node:fs/promises";
@@ -33,20 +33,6 @@ interface InternalAgentSession {
     timestamp: number;
     type: InternalAgentSessionType,
     index: number
-}
-
-interface ExternalAgentSession {
-    id: string,
-    title: string,
-    content: ExternalAgentMessage[],
-    workspace: string,
-    index: number
-}
-
-interface ExternalAgentMessage {
-    id: string,
-    text: string,
-    timestamp: number;
 }
 
 interface Intention {
@@ -66,9 +52,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class AgentsController extends Controller {
+    private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private logger = new InternalLogger(__filename);
     private internalAgentSessions: InternalAgentSession[] = [];
-    private externalAgentSessions: ExternalAgentSession[] = [];
     private textToSpeech: TextToSpeech;
     private authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
@@ -83,8 +69,8 @@ export class AgentsController extends Controller {
         cwd: process.cwd()
     });
 
-    constructor(textToSpeech: TextToSpeech, clientServerSynchronization: ClientServerSynchronization, databaseConnector: DatabaseConnector) {
-        super(clientServerSynchronization, databaseConnector, "AgentsController");
+    constructor(textToSpeech: TextToSpeech, databaseConnector: DatabaseConnector) {
+        super(databaseConnector);
         this.textToSpeech = textToSpeech;
     }
     
@@ -97,9 +83,9 @@ export class AgentsController extends Controller {
     private async loadConfigsAndSubscribe() {
         let providers = await this.databaseConnector.getLLMProvider();
         this.setControllerRecordVariable("llmProviders", providers)
-        this.clientServerSynchronization.subscribeOnRecordVariable("Sessions", "newSession", async (text: string) => {
+        /*this.clientServerSynchronization.subscribeOnRecordVariable("Sessions", "newSession", async (text: string) => {
             await this.startSessionByActivationWord(text)
-        });
+        });*/
         this.subscribeControllerRecordVariable("llmProviders", async (value: any) => {
             this.logger.info("Received LLM providers config update")
             if (Array.isArray(value)) {
@@ -195,23 +181,27 @@ export class AgentsController extends Controller {
                 let messages = relevantMessages.filter((message: any) => message.role == "assistant");
                 let intentionContext = this.getIntentionContext(messages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
-                let externalSession = this.externalAgentSessions[internalSession.index];
-                if (externalSession) {
-                    if (intentionContext.content !== undefined) {
-                        externalSession.workspace = intentionContext.content.text
-                        this.clientServerSynchronization.loadRecordValue("Sessions", "list[" + internalSession.index + "].workspace", externalSession.workspace);
-                    }
-                    if (intentionContext.speak !== undefined) {
-                        this.logger.info(intentionContext.speak.text)
-                        this.textToSpeech.say(intentionContext.speak.text);
-                        let newMessage = {
-                            id: uuidv7().toString(),
-                            text: intentionContext.speak.text,
-                            timestamp: Date.now()
-                        } as ExternalAgentMessage
-                        externalSession.content.push(newMessage)
-                        this.clientServerSynchronization.loadRecordValue("Sessions", "list[" + internalSession.index + "].newMessage", newMessage);
-                    }
+                if (intentionContext.content !== undefined) {
+                    externalSession.workspace = intentionContext.content.text
+                    this.clientServersynchronization.updateList("Sessions", "list", this.externalAgentSessions)
+                    this.clientServerSynchronization.sendEvent("workspace-changed", {
+                        sessionId: externalSession.id,
+                        workspace: intentionContext.content
+                    });
+                }
+                if (intentionContext.speak !== undefined) {
+                    this.logger.info(intentionContext.speak.text)
+                    this.textToSpeech.say(intentionContext.speak.text);
+                    let newMessage = {
+                        id: uuidv7().toString(),
+                        text: intentionContext.speak.text,
+                        timestamp: Date.now()
+                    } as ExternalAgentMessage
+                    externalSession.content.push(newMessage)
+                    this.clientServerSynchronization.sendEvent("new-message", {
+                        sessionId: externalSession.id,
+                        message: newMessage
+                    })
                 }
             }
         });

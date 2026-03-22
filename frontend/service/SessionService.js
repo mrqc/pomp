@@ -28,9 +28,11 @@ export class SessionService {
     
     clientServerSynchronization;
 
+    sessions;
+    
     async subscribe(callback) {
         this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
-        this.clientServerSynchronization.subscribeOnRecordVariable('Sessions', 'list', (sessions) => {
+        this.clientServerSynchronization.subscribeOnEvent('Sessions', 'list', (sessions) => {
             if (Array.isArray(sessions)) {
                 for (let session of sessions) {
                     this.clientServerSynchronization.subscribeOnRecordVariable("Sessions", "list[" + session.index + "].workspace", (workspaceData) => {

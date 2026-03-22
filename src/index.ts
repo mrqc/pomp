@@ -1,14 +1,14 @@
-import {ExpressWrapper} from "./ExpressWrapper.ts";
-import {AudioRecording} from "./AudioRecording.ts";
+import {ExpressWrapper} from "./Controller/ExpressWrapper.ts";
+import {AudioRecording} from "./Controller/AudioRecording.ts";
 import { fileURLToPath } from 'url';
 import path from 'path';
-import {SpeechToText} from "./SpeechToText.ts";
-import {TextToSpeech} from "./TextToSpeech.ts";
+import {SpeechToText} from "./Controller/SpeechToText.ts";
+import {TextToSpeech} from "./Controller/TextToSpeech.ts";
 import {Mutex} from "es-toolkit";
-import {AudioPlaying} from "./AudioPlaying.ts";
-import {AgentsController} from "./AgentsController.ts";
+import {AudioPlaying} from "./Controller/AudioPlaying.ts";
+import {AgentsController} from "./Controller/AgentsController.ts";
 import {InternalLogger} from "./LogConfig.ts";
-import {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
+import {ClientServerSynchronizationService} from "./services/ClientServerSynchronizationService.ts";
 import {DatabaseConnector} from "./DatabaseConnector.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
@@ -23,19 +23,19 @@ logger.info("Starting database connector")
 let configuration = new Configuration();
 let databaseConnector = new DatabaseConnector();
 logger.info("Starting client/server synchronization")
-let clientServerSynchronization = new ClientServerSynchronization();
+let clientServerSynchronization = ClientServerSynchronizationService.getInstance();
 logger.info("Starting express")
-let express: ExpressWrapper = new ExpressWrapper(clientServerSynchronization, databaseConnector, configuration)
+let express: ExpressWrapper = new ExpressWrapper(databaseConnector, configuration)
 logger.info("Starting text to speech")
-let textToSpeech: TextToSpeech = new TextToSpeech(clientServerSynchronization, databaseConnector);
+let textToSpeech: TextToSpeech = new TextToSpeech(databaseConnector);
 logger.info("Starting audio playing")
-let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex, clientServerSynchronization, databaseConnector);
+let audioPlaying: AudioPlaying = new AudioPlaying(audioMutex, databaseConnector);
 logger.info("Agents controller starting")
-let agentsController: AgentsController = new AgentsController(textToSpeech, clientServerSynchronization, databaseConnector);
+let agentsController: AgentsController = new AgentsController(textToSpeech, databaseConnector);
 logger.info("Starting speech to text")
-let speechToText: SpeechToText = new SpeechToText(agentsController, clientServerSynchronization, databaseConnector);
+let speechToText: SpeechToText = new SpeechToText(agentsController, databaseConnector);
 logger.info("Starting audio recording")
-let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, clientServerSynchronization, databaseConnector, textToSpeech, audioPlaying);
+let audioRecording: AudioRecording = new AudioRecording(audioMutex, speechToText, databaseConnector, textToSpeech, audioPlaying);
 
 logger.info("Starting environment...")
 

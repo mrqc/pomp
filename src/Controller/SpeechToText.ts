@@ -1,13 +1,13 @@
-import {InternalLogger} from "./LogConfig.js";
+import {InternalLogger} from "../LogConfig.js";
 import {nodewhisper} from "nodejs-whisper";
 import type {Logger} from "nodejs-whisper/dist/types";
 import fs from "fs-extra";
 import path from "node:path";
 import {fileURLToPath} from "url";
 import type {AgentsController} from "./AgentsController.ts";
-import type {ClientServerSynchronization} from "./ClientServerSynchronization.ts";
+import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {Controller} from "./Controller.ts";
-import type {DatabaseConnector} from "./DatabaseConnector.ts";
+import type {DatabaseConnector} from "../DatabaseConnector.ts";
 import type {TextToSpeech} from "./TextToSpeech.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +20,7 @@ interface Phrase {
 
 export class SpeechToText extends Controller {
 
+    private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
     private static secondsToLooseText = 10;
     private static modelName = 'tiny.en';
@@ -32,9 +33,8 @@ export class SpeechToText extends Controller {
     private isActivatedByKeyword: boolean = false;
     
     constructor(agentsController: AgentsController,
-                clientServerSynchronization: ClientServerSynchronization,
                 databaseConnector: DatabaseConnector) {
-        super(clientServerSynchronization, databaseConnector, "SpeechToText");
+        super(databaseConnector);
         SpeechToText.cleanup();
         this.agentsController = agentsController;
     }
@@ -49,35 +49,35 @@ export class SpeechToText extends Controller {
         SpeechToText.modelName = await this.getControllerRecordStringConfiguration("modelName");
         SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
         SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
-        this.setControllerRecordVariable("secondsToLooseText", SpeechToText.secondsToLooseText);
-        this.setControllerRecordVariable("activationKeywords", SpeechToText.activationKeywords.join(", "));
-        this.setControllerRecordVariable("modelName", SpeechToText.modelName)
-        this.setControllerRecordVariable("translateToEnglish", SpeechToText.translateToEnglish)
-        this.setControllerRecordVariable("splitOnWord", SpeechToText.splitOnWord)
-        this.subscribeControllerRecordVariable("secondsToLooseText", async (value: any) => {
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "secondsToLooseText", SpeechToText.secondsToLooseText);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "activationKeywords", SpeechToText.activationKeywords.join(", "));
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "modelName", SpeechToText.modelName);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "translateToEnglish", SpeechToText.translateToEnglish);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "splitOnWord", SpeechToText.splitOnWord);
+        this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "secondsToLooseText", async (value: any) => {
             await this.setControllerRecordConfiguration("secondsToLooseText", value);
             SpeechToText.secondsToLooseText = await this.getControllerRecordIntegerConfiguration("secondsToLooseText");
-            this.sendInfo("Seconds to loose text changed to " + SpeechToText.secondsToLooseText)
+            this.clientServerSynchronization.sendGuiInfo("Seconds to loose text changed to " + SpeechToText.secondsToLooseText)
         });
-        this.subscribeControllerRecordVariable("activationKeywords", async (value: any) => {
+        this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "activationKeywords", async (value: any) => {
             await this.setControllerRecordConfiguration("activationKeywords", value);
             SpeechToText.activationKeywords = await this.getControllerRecordStringArrayConfiguration("activationKeywords");
-            this.sendInfo("Activation keywords changed to " + SpeechToText.activationKeywords)
+            this.clientServerSynchronization.sendGuiInfo("Activation keywords changed to " + SpeechToText.activationKeywords)
         });
-        this.subscribeControllerRecordVariable("modelName", async (value: any) => {
+        this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "modelName", async (value: any) => {
             await this.setControllerRecordConfiguration("modelName", value);
             SpeechToText.modelName = await this.getControllerRecordStringConfiguration("modelName");
-            this.sendInfo("Model name changed to " + SpeechToText.modelName)
+            this.clientServerSynchronization.sendGuiInfo("Model name changed to " + SpeechToText.modelName)
         });
-        this.subscribeControllerRecordVariable("translateToEnglish", async (value: any) => {
+        this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "translateToEnglish", async (value: any) => {
             await this.setControllerRecordConfiguration("translateToEnglish", value);
             SpeechToText.translateToEnglish = await this.getControllerRecordBooleanConfiguration("translateToEnglish");
-            this.sendInfo("Translate to English changed to " + SpeechToText.translateToEnglish)
+            this.clientServerSynchronization.sendGuiInfo("Translate to English changed to " + SpeechToText.translateToEnglish)
         });
-        this.subscribeControllerRecordVariable("splitOnWord", async (value: any) => {
+        this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "splitOnWord", async (value: any) => {
             await this.setControllerRecordConfiguration("splitOnWord", value);
             SpeechToText.splitOnWord = await this.getControllerRecordBooleanConfiguration("splitOnWord");
-            this.sendInfo("Split on word changed to " + SpeechToText.splitOnWord)
+            this.clientServerSynchronization.sendGuiInfo("Split on word changed to " + SpeechToText.splitOnWord)
         });
     }
 

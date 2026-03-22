@@ -178,7 +178,6 @@ class AppLayout extends LitElement {
         },
     };
 
-    sessions;
     sessionService;
     selectedSession;
 
