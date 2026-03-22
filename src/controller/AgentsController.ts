@@ -11,7 +11,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import {fileURLToPath} from "url";
 import path from "path";
-import type {TextToSpeech} from "./TextToSpeech.ts";
+import type {TextToSpeechController} from "./TextToSpeechController.ts";
 import type {Message, TextContent} from "@mariozechner/pi-ai/dist/types";
 import {uuidv7} from "uuidv7";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
@@ -21,6 +21,7 @@ import {Mutex} from "es-toolkit";
 import {join} from "node:path";
 import {readFile} from "node:fs/promises";
 import type {AgentMessage} from "@mariozechner/pi-agent-core";
+import {type IntentionContext, IntentionContextService} from "../text-processing/IntentionContext.ts";
 
 enum InternalAgentSessionType {
     MAIN
@@ -34,28 +35,16 @@ interface InternalAgentSession {
     index: number
 }
 
-interface Intention {
-    tagName: string,
-    text: string
-}
-
-interface IntentionContext {
-    speak: Intention,
-    content: Intention,
-    wait: Intention,
-    go: Intention,
-    text: string
-}
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class AgentsController {
+    private intentionContextService = new IntentionContextService();
     private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private logger = new InternalLogger(__filename);
     private internalAgentSessions: InternalAgentSession[] = [];
-    private textToSpeech: TextToSpeech;
+    private textToSpeech: TextToSpeechController;
     private authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
     private modelRegistryMutex: Mutex = new Mutex();
@@ -69,8 +58,7 @@ export class AgentsController {
         cwd: process.cwd()
     });
 
-    constructor(textToSpeech: TextToSpeech) {
-        super();
+    constructor(textToSpeech: TextToSpeechController) {
         this.textToSpeech = textToSpeech;
     }
     
@@ -82,11 +70,8 @@ export class AgentsController {
     
     private async loadConfigsAndSubscribe() {
         let providers = await this.databaseConnector.getLLMProvider();
-        this.setControllerRecordVariable("llmProviders", providers)
-        /*this.clientServerSynchronization.subscribeOnRecordVariable("Sessions", "newSession", async (text: string) => {
-            await this.startSessionByActivationWord(text)
-        });*/
-        this.subscribeControllerRecordVariable("llmProviders", async (value: any) => {
+        this.clientServerSynchronization.loadRecordValue("AgentsController", "llmProviders", providers);
+        this.clientServerSynchronization.subscribeOnRecordVariable("AgentsController", "llmProviders", async (value: any)=>  {
             this.logger.info("Received LLM providers config update")
             if (Array.isArray(value)) {
                 await this.databaseConnector.deleteAllLLMProviders();
@@ -103,10 +88,10 @@ export class AgentsController {
                 } finally {
                     this.modelRegistryMutex.release();
                 }
-                this.sendInfo(`Stored ${value.length} LLM provider(s) from config update.`);
+                this.clientServerSynchronization.sendGuiInfo(`Stored ${value.length} LLM provider(s) from config update.`);
             } else {
                 this.logger.error("LLM Providers config update did not provide an array of ProviderConfigInput");
-                this.sendError("Unable to store LLM provider(s).")
+                this.clientServerSynchronization.sendGuiError("Unable to store LLM provider(s).")
             }
         });
     }
@@ -137,23 +122,6 @@ export class AgentsController {
         }
     }
     
-    private getIntentionContext(messages: AgentMessage[]): IntentionContext {
-        let overallResponseContent = this.extractTextFromResponse(messages);
-        let intentions = this.getIntentions(overallResponseContent);
-        let speakIntention = this.getIntentionContent(intentions, "SPEAK")
-        let contentIntention = this.getIntentionContent(intentions, "CONTENT")
-        let waitIntention = this.getIntentionContent(intentions, "WAIT")
-        let goIntention = this.getIntentionContent(intentions, "GO")
-        overallResponseContent = this.removeIntentionContents(overallResponseContent);
-        return {
-            speak: speakIntention,
-            content: contentIntention,
-            wait: waitIntention,
-            go: goIntention,
-            text: overallResponseContent
-        }
-    }
-    
     private async createSession(text: string): Promise<AgentSession | undefined> {
         let sessionCreationResult = await createAgentSession({
             tools: [readTool, bashTool],
@@ -179,7 +147,7 @@ export class AgentsController {
                 }
                 let relevantMessages = lastUserMessageIndex != -1 ? event.messages.slice(lastUserMessageIndex + 1) : event.messages;
                 let messages = relevantMessages.filter((message: any) => message.role == "assistant");
-                let intentionContext = this.getIntentionContext(messages)
+                let intentionContext = this.intentionContextService.getIntentionContext(messages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
                 if (intentionContext.content !== undefined) {
                     externalSession.workspace = intentionContext.content.text
@@ -212,44 +180,6 @@ export class AgentsController {
         this.logger.info("Providing prompt " + text + " to session")
         return session;
     }
-    
-    private getIntentionContent(intentions: Intention[], intentionName: string): Intention {
-        let intention = intentions.filter((anIntention) => anIntention.tagName == intentionName)[0];
-        if (intention == undefined) {
-            return {
-                tagName: intentionName,
-                text: ""
-            }
-        }
-        return intention
-    }
-
-    private removeIntentionContents(textToSay: string) {
-        return textToSay.replace(/\[([a-zA-Z0-9_-]+)]([\s\S]*?)\[\/\1]/g, "");
-    }
-
-    private getIntentions(content: string): Intention[] {
-        const regex = /\[([a-zA-Z0-9_-]+)]([\s\S]*?)\[\/\1]/g;
-        
-        return Array.from(content.matchAll(regex), match => ({
-            tagName: match[1],
-            text: match[2]
-        } as Intention));
-    }
-
-    private extractTextFromResponse(messages: AgentMessage[]) {
-        var textToSay: string = "";
-        for (let message of messages) {
-            this.logger.info("Message: " + JSON.stringify(message))
-            if ("content" in message && Array.isArray(message.content)) {
-                let contents = message.content.filter((content: { type: string; }) => content.type == "text");
-                for (let content of contents) {
-                    textToSay += (content as TextContent).text + " ";
-                }
-            }
-        }
-        return textToSay;
-    }
 
     private addSession(session: AgentSession, text: string): InternalAgentSession {
         let internalSession = {
@@ -264,10 +194,9 @@ export class AgentsController {
             id: uuidv7().toString(),
             title: text.slice(0, 50) + "…",
             content: [],
-            index: this.externalAgentSessions.length,
+            index: this.internalAgentSessions.length,
             workspace: "New Session"
         }
-        this.externalAgentSessions.push(externalSession)
         this.logger.info("Adding session " + JSON.stringify(externalSession));
         this.clientServerSynchronization.loadRecordValue("Sessions", "list", this.externalAgentSessions);
         return internalSession

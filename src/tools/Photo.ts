@@ -1,7 +1,5 @@
 import NodeWebcam from 'node-webcam';
 import fs from "fs-extra";
-import {fileURLToPath} from "url";
-import path from "node:path";
 
 const webcam = NodeWebcam.create({
     width: 1280,

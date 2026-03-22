@@ -9,7 +9,7 @@ import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts"
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class TextToSpeech {
+export class TextToSpeechController {
     private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly AUDIO_DIR = path.resolve(__dirname, 'audio-outputs');
@@ -20,25 +20,25 @@ export class TextToSpeech {
     private splitter = new TextSplitterStream();
 
     constructor() {
-        TextToSpeech.cleanup();
+        TextToSpeechController.cleanup();
     }
 
     async init() {
-        fs.ensureDirSync(TextToSpeech.AUDIO_DIR);
-        this.textToSpeechModel = await KokoroTTS.from_pretrained(TextToSpeech.modelId, {
+        fs.ensureDirSync(TextToSpeechController.AUDIO_DIR);
+        this.textToSpeechModel = await KokoroTTS.from_pretrained(TextToSpeechController.modelId, {
             dtype: "fp32",
         });
         if ( !InternalLogger.isDebug()) {
             const stream = this.textToSpeechModel!.stream(
                 this.splitter,
                 { 
-                    speed: TextToSpeech.textSpeed, 
+                    speed: TextToSpeechController.textSpeed, 
                     split_pattern: new RegExp('\t') 
                 });
             (async () => {
                 for await (const {text, phonemes, audio} of stream) {
                     this.logger.info(JSON.stringify({text, phonemes}));
-                    let fileName = path.resolve(TextToSpeech.AUDIO_DIR, 'output-' + Date.now() + '.wav');
+                    let fileName = path.resolve(TextToSpeechController.AUDIO_DIR, 'output-' + Date.now() + '.wav');
                     audio.save(fileName);
                 }
             })();
@@ -47,19 +47,19 @@ export class TextToSpeech {
     }
 
     private async loadConfigsAndSubscribe() {
-        TextToSpeech.textSpeed = await this.databaseConnector.getFloatConfig("textSpeed");
-        TextToSpeech.modelId = await this.databaseConnector.getStringConfig("modelId");
-        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "textSpeed", TextToSpeech.textSpeed);
-        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "modelId", TextToSpeech.modelId);
+        TextToSpeechController.textSpeed = await this.databaseConnector.getFloatConfig("TextToSpeech", "textSpeed");
+        TextToSpeechController.modelId = await this.databaseConnector.getStringConfig("TextToSpeech", "modelId");
+        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "textSpeed", TextToSpeechController.textSpeed);
+        this.clientServerSynchronization.loadRecordValue("TextToSpeech", "modelId", TextToSpeechController.modelId);
         this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "textSpeed", async (value: any) => {
-            await this.databaseConnector.setConfig("textSpeed", value);
-            TextToSpeech.textSpeed = await this.databaseConnector.getFloatConfig("textSpeed");
-            this.clientServerSynchronization.sendGuiInfo("Text speed changed to " + TextToSpeech.textSpeed)
+            await this.databaseConnector.setConfig("TextToSpeech", "textSpeed", value);
+            TextToSpeechController.textSpeed = await this.databaseConnector.getFloatConfig("TextToSpeech", "textSpeed");
+            this.clientServerSynchronization.sendGuiInfo("Text speed changed to " + TextToSpeechController.textSpeed)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "modelId", async (value: any) => {
-            await this.databaseConnector.setConfig("modelId", value);
-            TextToSpeech.modelId = await this.databaseConnector.getStringConfig("modelId");
-            this.clientServerSynchronization.sendGuiInfo("Model id changed to " + TextToSpeech.modelId)
+            await this.databaseConnector.setConfig("TextToSpeech", "modelId", value);
+            TextToSpeechController.modelId = await this.databaseConnector.getStringConfig("TextToSpeech", "modelId");
+            this.clientServerSynchronization.sendGuiInfo("Model id changed to " + TextToSpeechController.modelId)
         });
     }
 
@@ -75,8 +75,8 @@ export class TextToSpeech {
     }
     
     wantsToSaySomething(): boolean {
-        if (fs.existsSync(TextToSpeech.AUDIO_DIR)) {
-            const files = fs.readdirSync(TextToSpeech.AUDIO_DIR);
+        if (fs.existsSync(TextToSpeechController.AUDIO_DIR)) {
+            const files = fs.readdirSync(TextToSpeechController.AUDIO_DIR);
             this.logger.info("files: " + JSON.stringify(files))
             return files.some(file => file.endsWith('.wav'));
         }
@@ -85,7 +85,7 @@ export class TextToSpeech {
 
     public static cleanup() {
         if ( !InternalLogger.isDebug()) {
-            fs.removeSync(TextToSpeech.AUDIO_DIR);
+            fs.removeSync(TextToSpeechController.AUDIO_DIR);
         }
     }
 }

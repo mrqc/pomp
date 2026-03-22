@@ -7,7 +7,7 @@ import {Configuration} from "../Configuration.ts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class ExpressWrapper {
+export class ExpressWrapperController {
     private port = 4000;
     private app = express();
     private logger = new InternalLogger(__filename);

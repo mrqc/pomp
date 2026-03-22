@@ -5,42 +5,42 @@ import {FileWriter} from "wav";
 import type {IoStreamRead} from "naudiodon-no-segfault";
 import fs from "fs-extra";
 import {fileURLToPath} from "url";
-import {SpeechToText} from "./SpeechToText.ts";
+import {SpeechToTextController} from "./SpeechToTextController.ts";
 import {Mutex} from "es-toolkit";
 import {InternalLogger} from "../LogConfig.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
-import {TextToSpeech} from "./TextToSpeech.ts";
-import {AudioPlaying} from "./AudioPlaying.ts";
+import {TextToSpeechController} from "./TextToSpeechController.ts";
+import {AudioPlayingController} from "./AudioPlayingController.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AudioRecording {
+export class AudioRecordingController {
     private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
     public static defaultRecordingDuration = 0.25;
     private logger = new InternalLogger(__filename);
-    private speechToText: SpeechToText;
+    private speechToText: SpeechToTextController;
     private audioMutex: Mutex;
     private audioDevice: IoStreamRead | null = null;
     private currentWavFileWriter: FileWriter | null = null;
-    private textToSpeech: TextToSpeech | null = null;
+    private textToSpeech: TextToSpeechController | null = null;
     private isRecording: boolean = false;
     private currentOutputFileName: string | null = null;
     public silentCount = 0;
-    private audioPlaying: AudioPlaying;
+    private audioPlaying: AudioPlayingController;
 
-    constructor(audioMutex: Mutex, speechToText: SpeechToText, textToSpeech: TextToSpeech, audioPlaying: AudioPlaying) {
-        AudioRecording.cleanup();
+    constructor(audioMutex: Mutex, speechToText: SpeechToTextController, textToSpeech: TextToSpeechController, audioPlaying: AudioPlayingController) {
+        AudioRecordingController.cleanup();
         this.startRecording = this.startRecording.bind(this);
         this.textToSpeech = textToSpeech;
         this.audioMutex = audioMutex;
         this.speechToText = speechToText;
         this.audioPlaying = audioPlaying;
-        fs.ensureDirSync(AudioRecording.RECORDINGS_DIR);
+        fs.ensureDirSync(AudioRecordingController.RECORDINGS_DIR);
     }
     
     async init() {
@@ -48,19 +48,19 @@ export class AudioRecording {
     }
 
     private async loadConfigsAndSubscribe() {
-        AudioRecording.sampleRate = await this.databaseConnector.getIntegerConfig("sampleRate");
-        AudioRecording.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("defaultRecordingDuration");
-        this.clientServerSynchronization.loadRecordValue("AudioRecording", "sampleRate", AudioRecording.sampleRate);
-        this.clientServerSynchronization.loadRecordValue("AudioRecording", "defaultRecordingDuration", AudioRecording.defaultRecordingDuration);
+        AudioRecordingController.sampleRate = await this.databaseConnector.getIntegerConfig("AudioRecording", "sampleRate");
+        AudioRecordingController.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("AudioRecording", "defaultRecordingDuration");
+        this.clientServerSynchronization.loadRecordValue("AudioRecording", "sampleRate", AudioRecordingController.sampleRate);
+        this.clientServerSynchronization.loadRecordValue("AudioRecording", "defaultRecordingDuration", AudioRecordingController.defaultRecordingDuration);
         this.clientServerSynchronization.subscribeOnRecordVariable("AudioRecording","sampleRate", async (value: any) => {
-            await this.databaseConnector.setConfig("sampleRate", value);
-            AudioRecording.sampleRate = await this.databaseConnector.getIntegerConfig("sampleRate");
-            this.clientServerSynchronization.sendGuiInfo("Sample rate changed to " + AudioRecording.sampleRate)
+            await this.databaseConnector.setConfig("AudioRecording", "sampleRate", value);
+            AudioRecordingController.sampleRate = await this.databaseConnector.getIntegerConfig("AudioRecording", "sampleRate");
+            this.clientServerSynchronization.sendGuiInfo("Sample rate changed to " + AudioRecordingController.sampleRate)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("AudioRecording", "defaultRecordingDuration", async (value: any) => {
-            await this.databaseConnector.setConfig("defaultRecordingDuration", value);
-            AudioRecording.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("defaultRecordingDuration");
-            this.clientServerSynchronization.sendGuiInfo("Default recording duration changed to " + AudioRecording.defaultRecordingDuration)
+            await this.databaseConnector.setConfig("AudioRecording", "defaultRecordingDuration", value);
+            AudioRecordingController.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("AudioRecording", "defaultRecordingDuration");
+            this.clientServerSynchronization.sendGuiInfo("Default recording duration changed to " + AudioRecordingController.defaultRecordingDuration)
         });
     }
 
@@ -83,10 +83,10 @@ export class AudioRecording {
             inOptions: {
                 channelCount: 1,
                 sampleFormat: portAudio.SampleFormat16Bit,
-                sampleRate: AudioRecording.sampleRate,
+                sampleRate: AudioRecordingController.sampleRate,
                 deviceId: selectedDeviceId,
                 closeOnError: true,
-                framesPerBuffer: AudioRecording.sampleRate * AudioRecording.defaultRecordingDuration
+                framesPerBuffer: AudioRecordingController.sampleRate * AudioRecordingController.defaultRecordingDuration
             }
         });
         // Attach data event handler for manual writing
@@ -128,7 +128,7 @@ export class AudioRecording {
         this.logger.info("Acquire lock")
         await this.audioMutex.acquire();
         try {
-            this.currentOutputFileName = path.resolve(AudioRecording.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
+            this.currentOutputFileName = path.resolve(AudioRecordingController.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
             let audioIo = this.initAudioDevice();
             if (audioIo == null) {
                 this.audioMutex.release(); // Explicitly release if init fails and we acquired lock
@@ -139,7 +139,7 @@ export class AudioRecording {
             }
             this.currentWavFileWriter = new wav.FileWriter(this.currentOutputFileName, {
                 channels: 1,
-                sampleRate: AudioRecording.sampleRate,
+                sampleRate: AudioRecordingController.sampleRate,
                 bitDepth: 16
             });
             this.isRecording = true;
@@ -183,7 +183,7 @@ export class AudioRecording {
 
     public static cleanup() {
         if ( !InternalLogger.isDebug()) {
-            fs.removeSync(AudioRecording.RECORDINGS_DIR);
+            fs.removeSync(AudioRecordingController.RECORDINGS_DIR);
         }
     }
 }

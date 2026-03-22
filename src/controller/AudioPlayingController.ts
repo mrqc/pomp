@@ -14,7 +14,7 @@ interface AudioFile {
     timestamp: number;
 }
 
-export class AudioPlaying {    
+export class AudioPlayingController {    
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'audio-outputs');
     private audioMutex: Mutex;
     private queue: AudioFile[] = [];
@@ -27,13 +27,13 @@ export class AudioPlaying {
     }
     
     public init() {
-        fs.ensureDirSync(AudioPlaying.RECORDINGS_DIR);
+        fs.ensureDirSync(AudioPlayingController.RECORDINGS_DIR);
         this.watchDirectory();
         this.initExistingFiles();
     }
     
     private watchDirectory() {
-        this.watcher = chokidar.watch(AudioPlaying.RECORDINGS_DIR, {
+        this.watcher = chokidar.watch(AudioPlayingController.RECORDINGS_DIR, {
             persistent: true,
             ignoreInitial: false,
             usePolling: true,
@@ -50,10 +50,10 @@ export class AudioPlaying {
     }
     
     private putExistingFilesToQueue() {
-        const files = fs.readdirSync(AudioPlaying.RECORDINGS_DIR)
+        const files = fs.readdirSync(AudioPlayingController.RECORDINGS_DIR)
             .filter(aFile => /^output-(\d+)\.wav$/.test(aFile))
             .map(aFile => ({
-                filePath: path.join(AudioPlaying.RECORDINGS_DIR, aFile),
+                filePath: path.join(AudioPlayingController.RECORDINGS_DIR, aFile),
                 timestamp: this.extractTimestamp(aFile)
             }))
             .filter(aAudioFile => aAudioFile.timestamp !== null) as AudioFile[];

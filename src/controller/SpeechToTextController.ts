@@ -16,7 +16,7 @@ interface Phrase {
     timestamp: number;
 }
 
-export class SpeechToText {
+export class SpeechToTextController {
     private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
@@ -31,8 +31,7 @@ export class SpeechToText {
     private isActivatedByKeyword: boolean = false;
     
     constructor(agentsController: AgentsController) {
-        super();
-        SpeechToText.cleanup();
+        SpeechToTextController.cleanup();
         this.agentsController = agentsController;
     }
     
@@ -41,45 +40,45 @@ export class SpeechToText {
     }
 
     private async loadConfigsAndSubscribe() {
-        SpeechToText.secondsToLooseText = await this.databaseConnector.getIntegerConfig("secondsToLooseText");
-        SpeechToText.activationKeywords = (await this.databaseConnector.getStringArrayConfig("activationKeywords"))
-        SpeechToText.modelName = await this.databaseConnector.getStringConfig("modelName");
-        SpeechToText.translateToEnglish = await this.databaseConnector.getBooleanConfig("translateToEnglish");
-        SpeechToText.splitOnWord = await this.databaseConnector.getBooleanConfig("splitOnWord");
-        this.clientServerSynchronization.loadRecordValue("SpeechToText", "secondsToLooseText", SpeechToText.secondsToLooseText);
-        this.clientServerSynchronization.loadRecordValue("SpeechToText", "activationKeywords", SpeechToText.activationKeywords.join(", "));
-        this.clientServerSynchronization.loadRecordValue("SpeechToText", "modelName", SpeechToText.modelName);
-        this.clientServerSynchronization.loadRecordValue("SpeechToText", "translateToEnglish", SpeechToText.translateToEnglish);
-        this.clientServerSynchronization.loadRecordValue("SpeechToText", "splitOnWord", SpeechToText.splitOnWord);
+        SpeechToTextController.secondsToLooseText = await this.databaseConnector.getIntegerConfig("AudioRecording", "secondsToLooseText");
+        SpeechToTextController.activationKeywords = (await this.databaseConnector.getStringArrayConfig("AudioRecording", "activationKeywords"))
+        SpeechToTextController.modelName = await this.databaseConnector.getStringConfig("AudioRecording", "modelName");
+        SpeechToTextController.translateToEnglish = await this.databaseConnector.getBooleanConfig("AudioRecording", "translateToEnglish");
+        SpeechToTextController.splitOnWord = await this.databaseConnector.getBooleanConfig("AudioRecording", "splitOnWord");
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "secondsToLooseText", SpeechToTextController.secondsToLooseText);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "activationKeywords", SpeechToTextController.activationKeywords.join(", "));
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "modelName", SpeechToTextController.modelName);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "translateToEnglish", SpeechToTextController.translateToEnglish);
+        this.clientServerSynchronization.loadRecordValue("SpeechToText", "splitOnWord", SpeechToTextController.splitOnWord);
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "secondsToLooseText", async (value: any) => {
-            await this.databaseConnector.setConfig("secondsToLooseText", value);
-            SpeechToText.secondsToLooseText = await this.databaseConnector.getIntegerConfig("secondsToLooseText");
-            this.clientServerSynchronization.sendGuiInfo("Seconds to loose text changed to " + SpeechToText.secondsToLooseText)
+            await this.databaseConnector.setConfig("AudioRecording", "secondsToLooseText", value);
+            SpeechToTextController.secondsToLooseText = await this.databaseConnector.getIntegerConfig("AudioRecording", "secondsToLooseText");
+            this.clientServerSynchronization.sendGuiInfo("Seconds to loose text changed to " + SpeechToTextController.secondsToLooseText)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "activationKeywords", async (value: any) => {
-            await this.databaseConnector.setConfig("activationKeywords", value);
-            SpeechToText.activationKeywords = await this.databaseConnector.getStringArrayConfig("activationKeywords");
-            this.clientServerSynchronization.sendGuiInfo("Activation keywords changed to " + SpeechToText.activationKeywords)
+            await this.databaseConnector.setConfig("AudioRecording", "activationKeywords", value);
+            SpeechToTextController.activationKeywords = await this.databaseConnector.getStringArrayConfig("AudioRecording", "activationKeywords");
+            this.clientServerSynchronization.sendGuiInfo("Activation keywords changed to " + SpeechToTextController.activationKeywords)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "modelName", async (value: any) => {
-            await this.databaseConnector.setConfig("modelName", value);
-            SpeechToText.modelName = await this.databaseConnector.getStringConfig("modelName");
-            this.clientServerSynchronization.sendGuiInfo("Model name changed to " + SpeechToText.modelName)
+            await this.databaseConnector.setConfig("AudioRecording", "modelName", value);
+            SpeechToTextController.modelName = await this.databaseConnector.getStringConfig("AudioRecording", "modelName");
+            this.clientServerSynchronization.sendGuiInfo("Model name changed to " + SpeechToTextController.modelName)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "translateToEnglish", async (value: any) => {
-            await this.databaseConnector.setConfig("translateToEnglish", value);
-            SpeechToText.translateToEnglish = await this.databaseConnector.getBooleanConfig("translateToEnglish");
-            this.clientServerSynchronization.sendGuiInfo("Translate to English changed to " + SpeechToText.translateToEnglish)
+            await this.databaseConnector.setConfig("AudioRecording", "translateToEnglish", value);
+            SpeechToTextController.translateToEnglish = await this.databaseConnector.getBooleanConfig("AudioRecording", "translateToEnglish");
+            this.clientServerSynchronization.sendGuiInfo("Translate to English changed to " + SpeechToTextController.translateToEnglish)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "splitOnWord", async (value: any) => {
-            await this.databaseConnector.setConfig("splitOnWord", value);
-            SpeechToText.splitOnWord = await this.databaseConnector.getBooleanConfig("splitOnWord");
-            this.clientServerSynchronization.sendGuiInfo("Split on word changed to " + SpeechToText.splitOnWord)
+            await this.databaseConnector.setConfig("AudioRecording", "splitOnWord", value);
+            SpeechToTextController.splitOnWord = await this.databaseConnector.getBooleanConfig("AudioRecording", "splitOnWord");
+            this.clientServerSynchronization.sendGuiInfo("Split on word changed to " + SpeechToTextController.splitOnWord)
         });
     }
 
     async writeAudioFileToTextStream(outputFileName: string) {
-        fs.ensureDirSync(SpeechToText.TRANSLATION_DIR);
+        fs.ensureDirSync(SpeechToTextController.TRANSLATION_DIR);
         await this.transformSpeechToIntermediaryOutput(outputFileName)
         await this.transformIntermediaryOutputToPhrases(outputFileName)
     }
@@ -151,7 +150,7 @@ export class SpeechToText {
     private removeOutdatedPhrasesFromContextWindow() {
         let now = Date.now();
         for (let phraseIndex = 0; phraseIndex < this.phrases.length; phraseIndex++) {
-            if (this.phrases[phraseIndex]!.timestamp < now - SpeechToText.secondsToLooseText * 1000) {
+            if (this.phrases[phraseIndex]!.timestamp < now - SpeechToTextController.secondsToLooseText * 1000) {
                 this.phrases.splice(phraseIndex, 1);
                 phraseIndex--;
             }
@@ -160,7 +159,7 @@ export class SpeechToText {
     
     public currentStreamTextContainsActivationKeyword(): boolean {
         const streamText = this.getCurrentStreamText().toLowerCase();
-        return SpeechToText.activationKeywords.some(keyword => streamText.includes(keyword.toLowerCase()));
+        return SpeechToTextController.activationKeywords.some(keyword => streamText.includes(keyword.toLowerCase()));
     }
     
     public getCurrentStreamText(): string {
@@ -171,8 +170,8 @@ export class SpeechToText {
     private async transformSpeechToIntermediaryOutput(outputFileName: string) {
         try {
             await nodewhisper(outputFileName, {
-                modelName: SpeechToText.modelName,
-                autoDownloadModelName: SpeechToText.modelName,
+                modelName: SpeechToTextController.modelName,
+                autoDownloadModelName: SpeechToTextController.modelName,
                 removeWavFileAfterTranscription: !InternalLogger.isDebug(),
                 withCuda: true,
                 logger: new class implements Logger {
@@ -199,10 +198,10 @@ export class SpeechToText {
                     outputInText: false,
                     outputInVtt: false,
                     outputInWords: false,
-                    translateToEnglish: SpeechToText.translateToEnglish,
+                    translateToEnglish: SpeechToTextController.translateToEnglish,
                     wordTimestamps: false,
                     timestamps_length: 10,
-                    splitOnWord: SpeechToText.splitOnWord,
+                    splitOnWord: SpeechToTextController.splitOnWord,
                 },
             });
         } catch (error) {
@@ -213,7 +212,7 @@ export class SpeechToText {
     
     public static cleanup() {
         if ( !InternalLogger.isDebug()) {
-            fs.removeSync(SpeechToText.TRANSLATION_DIR);
+            fs.removeSync(SpeechToTextController.TRANSLATION_DIR);
         }
     }
 }
