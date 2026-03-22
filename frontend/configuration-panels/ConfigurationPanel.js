@@ -36,7 +36,7 @@ export class ConfigurationPanel extends LitElement {
     
     async setRecordVariable(variableName, value) {
         const clientServerSync = await ClientServerSynchronization.getInstance();
-        clientServerSync.setValue(this.recordName, variableName, value);
+        clientServerSync.setRecordVariableValue(this.recordName, variableName, value);
     }
 
     async subscribeOnErrors() {

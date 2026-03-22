@@ -20,7 +20,35 @@ export class ClientServerSynchronization {
         return this.client.record.getRecord(recordName);
     }
     
-    setValue(recordName, variableName, value) {
+    unsubscribeFromList(listName, initialCallback, deltaAddCallback) {
+        let list = this.client.record.getList(listName);
+        list.off(deltaAddCallback);
+        list.unsubscribe(initialCallback);
+    }
+    
+    getAndSubscribeList(listName, initialCallback, deltaAddCallback) {
+        const listObject = this.client.record.getList(listName);
+        listObject.whenReady((list) => {
+            const currentEntries = list.getEntries();
+            let entryRecords = [];
+            currentEntries.forEach(recordName => {
+                const recordObject = this.getRecord(recordName);
+                recordObject.whenReady((record) => {
+                    const data = record.get();
+                    console.log(`Data for ${recordName}:`, data);
+                    entryRecords.push(record);
+                });
+            });
+            console.log('Initial state loaded:', entryRecords);
+            initialCallback(entryRecords);
+            list.on('entry-added', (recordName, index) => {
+                console.log('DELTA: Only this item added: ', recordName);
+                deltaAddCallback(this.getRecord(recordName));
+            });
+        });
+    }
+    
+    setRecordVariableValue(recordName, variableName, value) {
         this.client.record.getRecord(recordName).whenReady((record) => {
             record.set(variableName, value);
         });

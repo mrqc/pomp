@@ -141,7 +141,7 @@ export class InteractionLayer extends LitElement {
                         console.log(d1 + " " + d2 + " " + d3 + " " + d4)
                         if (!this.isPinching) {
                             const clientServerSync = await ClientServerSynchronization.getInstance();
-                            clientServerSync.setValue("SpeechContext", "content", "");
+                            clientServerSync.setRecordVariableValue("SpeechContext", "content", "");
                             return
                         }
                     }

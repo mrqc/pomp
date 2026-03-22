@@ -50,35 +50,57 @@ export class SessionPanel extends LitElement {
         }
     `;
 
+    clientServerSynchronization = ClientServerSynchronization.getInstance();
+    
     selectedSession = null;
 
     static properties = {
         session: { type: Object },
         workspace: { type: String },
-        content: { type: Array }
+        messages: { type: Array }
     };
 
     constructor() {
         super();
         this.session = null;
         this.workspace = "";
-        this.content = [];
+        this.messages = [];
     }
 
     updated(changedProperties) {
         if (changedProperties.has('session') && this.session !== this.selectedSession) {
+            this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
             this.selectedSession = this.session;
             this.init();
         }
     }
+    
+    initialListCallback = (listOfRecords) => {
+        let list = [];
+        listOfRecords.forEach(record => {
+            list.push(record.get());
+        });
+        this.messages = list || [];
+        this.requestUpdate();
+    };
+    
+    deltaListCallback = (newMessageRecord) => {
+        this.messages.push(newMessageRecord.get())
+    };
+    
+    workspaceUpdateCallback = (value) => {
+        this.workspace = value.get();
+        this.requestUpdate();
+    }
 
-    async init() {
-        if (!this.selectedSession) return;
-        
-        console.log("Session Workspace:", this.selectedSession.workspace);
-        
+    init() {
+        if (!this.selectedSession) {
+            return;
+        }
         this.workspace = this.selectedSession.workspace || "";
-        this.content = this.selectedSession.content || [];
+        console.log("Session Workspace:", this.selectedSession.workspace);
+        this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
+        this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.selectedSession.id, "workspace", this.workspaceUpdateCallback);
     }
 
     render() {
@@ -87,7 +109,7 @@ export class SessionPanel extends LitElement {
                 ${this.workspace ? unsafeHTML(this.workspace) : html``}
             </div>
             <div id="content-container">
-                ${this.content.map(message => html`
+                ${this.messages.map(message => html`
                     <div class="message">
                         <div class="message-timestamp">${new Date(message.timestamp).toLocaleString()}</div>
                         <div class="message-text">${message.text}</div>

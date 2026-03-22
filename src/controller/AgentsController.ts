@@ -17,26 +17,29 @@ import {LLMSessionsService} from "../services/LLMSessionsService.ts";
 enum InternalAgentSessionType {
     MAIN
 }
-
-interface InternalAgentSession {
-    id: string;
-    agentSession: AgentSession;
-    timestamp: number;
-    type: InternalAgentSessionType,
-    workspace: string
+enum AgentSessionMessageType {
+    USER,
+    ASSISTANT
 }
 
-interface PromptResponseMessage {
+interface AgentSessionProvisioning {
+    id: string;
+    timestamp: number;
+    type: InternalAgentSessionType;
+    workspace: string;
+    title: string;
+}
+
+interface InternalAgentSessionProvisioning extends AgentSessionProvisioning {
+    agentSession: AgentSession;
+    messages: AgentSessionMessage[];
+}
+
+interface AgentSessionMessage {
     id: string;
     text: string;
     timestamp: number;
-}
-
-interface ExternalAgentSession {
-    id: string;
-    title: string;
-    content: [];
-    workspace: string;
+    type: AgentSessionMessageType;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,7 +50,7 @@ export class AgentsController {
     private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private logger = new InternalLogger(__filename);
-    private internalAgentSessions: InternalAgentSession[] = [];
+    private agentSessions: InternalAgentSessionProvisioning[] = [];
     private textToSpeech: TextToSpeechController;
     private modelRegistryMutex: Mutex = new Mutex();
     private llmSessionsService = new LLMSessionsService();
@@ -72,10 +75,9 @@ export class AgentsController {
             this.logger.info("Received LLM providers config update")
             if (Array.isArray(value)) {
                 await this.databaseConnector.deleteAllLLMProviders();
-                for (let i = 0; i < value.length; i++) {
-                    const providerConfig = value[i];
-                    const id = i;
-                    await this.databaseConnector.saveLLMProvider(id, providerConfig);
+                for (let index = 0; index < value.length; index++) {
+                    const providerConfig = value[index];
+                    await this.databaseConnector.saveLLMProvider(index, providerConfig);
                 }
                 this.logger.info(`Stored ${value.length} LLM provider(s) from config update.`);
                 try {
@@ -98,29 +100,36 @@ export class AgentsController {
             this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
             return;
         }
-        let session: AgentSession | undefined = undefined;
+        let session: InternalAgentSessionProvisioning | undefined = undefined;
         try {
             await this.modelRegistryMutex.acquire();
-            session = this.internalAgentSessions.filter((anInternalSession) => 
-                    anInternalSession.type == InternalAgentSessionType.MAIN)[0]?.agentSession
+            session = this.agentSessions.filter((anInternalSession) => anInternalSession.type == InternalAgentSessionType.MAIN)[0]
             if (session == undefined) {
-                session = await this.createSession(text)
+                session = await this.createSession(text);
                 if (session != undefined) {
-                    await session.prompt(text)
+                    await session.agentSession.prompt(text);
                 }
             } else {
-                await session.followUp(text)
+                await session.agentSession.followUp(text);
             }
+            this.addMessageToSession(text, session, AgentSessionMessageType.USER);
         } finally {
             this.modelRegistryMutex.release();
         }
     }
+    private addMessageToSession(text: string, internalSession: InternalAgentSessionProvisioning, type: AgentSessionMessageType) {
+        let newMessage = {
+            id: uuidv7().toString(),
+            text: text,
+            timestamp: Date.now(),
+            type: type
+        } as AgentSessionMessage;
+        internalSession.messages.push(newMessage);
+        this.clientServerSynchronization.addListEntry("messages-of-session-" + internalSession.id, "message-" + newMessage.id, newMessage);
+    }
     
-    private async createSession(text: string): Promise<AgentSession | undefined> {
+    private async createSession(text: string): Promise<InternalAgentSessionProvisioning> {
         let session = await this.llmSessionsService.getNewSession();
-        if (session == null) {
-            return;
-        }
         let internalSession = this.addSession(session, text)
         session.subscribe((event) => {
             if ("agent_end" == event.type) {
@@ -142,12 +151,7 @@ export class AgentsController {
                 }
                 if (intentionContext.speakIntention !== undefined) {
                     this.textToSpeech.say(intentionContext.speakIntention.text);
-                    let newMessage = {
-                        id: uuidv7().toString(),
-                        text: intentionContext.speakIntention.text,
-                        timestamp: Date.now()
-                    } as PromptResponseMessage;
-                    this.clientServerSynchronization.addListEntry("messages-of-session-" + internalSession.id, "message-" + newMessage.id, newMessage);
+                    this.addMessageToSession(intentionContext.speakIntention.text, internalSession, AgentSessionMessageType.ASSISTANT);
                 }
             }
         });
@@ -158,28 +162,24 @@ export class AgentsController {
         if (!session.isStreaming) {
             await session.agent.continue();
         }
-        
         this.logger.info("Providing prompt " + text + " to session")
-        return session;
+        return internalSession;
     }
 
-    private addSession(session: AgentSession, text: string): InternalAgentSession {
-        let internalSession = {
+    private addSession(session: AgentSession, text: string): InternalAgentSessionProvisioning {
+        let newSession = {
             id: uuidv7().toString(),
             agentSession: session,
             timestamp: Date.now(),
             type: InternalAgentSessionType.MAIN,
-            workspace: "New Session"
-        } as InternalAgentSession;
-        this.internalAgentSessions.push(internalSession);
-        let externalSession = {
-            id: internalSession.id,
-            title: text.slice(0, 50) + "…",
-            content: [],
-            workspace: "New Session"
-        } as ExternalAgentSession;
-        this.logger.info("Adding session " + JSON.stringify(externalSession));
-        this.clientServerSynchronization.addListEntry("sessions", "session-" + externalSession.id, externalSession);
-        return internalSession
+            workspace: "New Session",
+            messages: [],
+            title: text.slice(0, 50) + "…"
+        } as InternalAgentSessionProvisioning;
+        this.agentSessions.push(newSession);
+        this.logger.info("Adding session " + JSON.stringify(newSession));
+        const { agentSession, messages, ...provisioningOnly } = newSession;
+        this.clientServerSynchronization.addListEntry("sessions", "session-" + newSession.id, provisioningOnly as AgentSessionProvisioning);
+        return newSession
     }
 }
