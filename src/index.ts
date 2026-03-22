@@ -9,7 +9,7 @@ import {AudioPlaying} from "./Controller/AudioPlaying.ts";
 import {AgentsController} from "./Controller/AgentsController.ts";
 import {InternalLogger} from "./LogConfig.ts";
 import {ClientServerSynchronizationService} from "./services/ClientServerSynchronizationService.ts";
-import {DatabaseConnector} from "./DatabaseConnector.ts";
+import {DatabaseConnectorService} from "./services/DatabaseConnectorService.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
 
@@ -21,7 +21,7 @@ let logger = new InternalLogger(__filename);
 const audioMutex = new Mutex();
 logger.info("Starting database connector")
 let configuration = new Configuration();
-let databaseConnector = new DatabaseConnector();
+let databaseConnector = new DatabaseConnectorService();
 logger.info("Starting client/server synchronization")
 let clientServerSynchronization = ClientServerSynchronizationService.getInstance();
 logger.info("Starting express")

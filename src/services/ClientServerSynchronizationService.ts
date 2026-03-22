@@ -55,6 +55,17 @@ export class ClientServerSynchronizationService {
         }
     }
     
+    addListEntry(listName: string, entryName: string, value: any) {
+        try {
+            let record = this.client.record.getRecord(entryName);
+            record.set(value);
+            const list = this.client.record.getList(listName);
+            list.addEntry(entryName);
+        } catch (error) {
+            ClientServerSynchronizationService.logger.error("Error adding entry " + entryName + " to list " + listName + ": " + error);
+        }
+    }
+    
     subscribeOnEvent(eventName: string, callback: (data: any) => void) {
         this.client.event.subscribe(eventName, callback);
     }

@@ -3,15 +3,14 @@ import {InternalLogger} from "../LogConfig.js";
 import path from "node:path";
 import fs from "fs-extra";
 import {fileURLToPath} from "url";
-import {Controller} from "./Controller.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
-import type {DatabaseConnector} from "../DatabaseConnector.ts";
-import {Logger} from "@deepstream/client/dist/src/util/logger";
+import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class TextToSpeech extends Controller {
+export class TextToSpeech {
+    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly AUDIO_DIR = path.resolve(__dirname, 'audio-outputs');
     private static textSpeed = 1.4;
@@ -20,8 +19,7 @@ export class TextToSpeech extends Controller {
     private logger = new InternalLogger(__filename);
     private splitter = new TextSplitterStream();
 
-    constructor(databaseConnector: DatabaseConnector) {
-        super(databaseConnector);
+    constructor() {
         TextToSpeech.cleanup();
     }
 
@@ -49,18 +47,18 @@ export class TextToSpeech extends Controller {
     }
 
     private async loadConfigsAndSubscribe() {
-        TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
-        TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
+        TextToSpeech.textSpeed = await this.databaseConnector.getFloatConfig("textSpeed");
+        TextToSpeech.modelId = await this.databaseConnector.getStringConfig("modelId");
         this.clientServerSynchronization.loadRecordValue("TextToSpeech", "textSpeed", TextToSpeech.textSpeed);
         this.clientServerSynchronization.loadRecordValue("TextToSpeech", "modelId", TextToSpeech.modelId);
         this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "textSpeed", async (value: any) => {
-            await this.setControllerRecordConfiguration("textSpeed", value);
-            TextToSpeech.textSpeed = await this.getControllerRecordFloatConfiguration("textSpeed");
+            await this.databaseConnector.setConfig("textSpeed", value);
+            TextToSpeech.textSpeed = await this.databaseConnector.getFloatConfig("textSpeed");
             this.clientServerSynchronization.sendGuiInfo("Text speed changed to " + TextToSpeech.textSpeed)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "modelId", async (value: any) => {
-            await this.setControllerRecordConfiguration("modelId", value);
-            TextToSpeech.modelId = await this.getControllerRecordStringConfiguration("modelId");
+            await this.databaseConnector.setConfig("modelId", value);
+            TextToSpeech.modelId = await this.databaseConnector.getStringConfig("modelId");
             this.clientServerSynchronization.sendGuiInfo("Model id changed to " + TextToSpeech.modelId)
         });
     }

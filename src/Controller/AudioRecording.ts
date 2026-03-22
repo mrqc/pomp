@@ -9,16 +9,15 @@ import {SpeechToText} from "./SpeechToText.ts";
 import {Mutex} from "es-toolkit";
 import {InternalLogger} from "../LogConfig.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
-import {Controller} from "./Controller.ts";
-import type {DatabaseConnector} from "../DatabaseConnector.ts";
+import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 import {TextToSpeech} from "./TextToSpeech.ts";
 import {AudioPlaying} from "./AudioPlaying.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AudioRecording extends Controller {
-
+export class AudioRecording {
+    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
@@ -34,8 +33,7 @@ export class AudioRecording extends Controller {
     public silentCount = 0;
     private audioPlaying: AudioPlaying;
 
-    constructor(audioMutex: Mutex, speechToText: SpeechToText, databaseConnector: DatabaseConnector, textToSpeech: TextToSpeech, audioPlaying: AudioPlaying) {
-        super(databaseConnector);
+    constructor(audioMutex: Mutex, speechToText: SpeechToText, textToSpeech: TextToSpeech, audioPlaying: AudioPlaying) {
         AudioRecording.cleanup();
         this.startRecording = this.startRecording.bind(this);
         this.textToSpeech = textToSpeech;
@@ -50,18 +48,18 @@ export class AudioRecording extends Controller {
     }
 
     private async loadConfigsAndSubscribe() {
-        AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
-        AudioRecording.defaultRecordingDuration = await this.getControllerRecordFloatConfiguration("defaultRecordingDuration");
+        AudioRecording.sampleRate = await this.databaseConnector.getIntegerConfig("sampleRate");
+        AudioRecording.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("defaultRecordingDuration");
         this.clientServerSynchronization.loadRecordValue("AudioRecording", "sampleRate", AudioRecording.sampleRate);
         this.clientServerSynchronization.loadRecordValue("AudioRecording", "defaultRecordingDuration", AudioRecording.defaultRecordingDuration);
         this.clientServerSynchronization.subscribeOnRecordVariable("AudioRecording","sampleRate", async (value: any) => {
-            await this.setControllerRecordConfiguration("sampleRate", value);
-            AudioRecording.sampleRate = await this.getControllerRecordIntegerConfiguration("sampleRate");
+            await this.databaseConnector.setConfig("sampleRate", value);
+            AudioRecording.sampleRate = await this.databaseConnector.getIntegerConfig("sampleRate");
             this.clientServerSynchronization.sendGuiInfo("Sample rate changed to " + AudioRecording.sampleRate)
         });
         this.clientServerSynchronization.subscribeOnRecordVariable("AudioRecording", "defaultRecordingDuration", async (value: any) => {
-            await this.setControllerRecordConfiguration("defaultRecordingDuration", value);
-            AudioRecording.defaultRecordingDuration = await this.getControllerRecordFloatConfiguration("defaultRecordingDuration");
+            await this.databaseConnector.setConfig("defaultRecordingDuration", value);
+            AudioRecording.defaultRecordingDuration = await this.databaseConnector.getFloatConfig("defaultRecordingDuration");
             this.clientServerSynchronization.sendGuiInfo("Default recording duration changed to " + AudioRecording.defaultRecordingDuration)
         });
     }

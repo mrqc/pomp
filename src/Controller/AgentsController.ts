@@ -15,8 +15,7 @@ import type {TextToSpeech} from "./TextToSpeech.ts";
 import type {Message, TextContent} from "@mariozechner/pi-ai/dist/types";
 import {uuidv7} from "uuidv7";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
-import {DatabaseConnector} from "../DatabaseConnector.ts";
-import {Controller} from "./Controller.ts";
+import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 import type { ProviderConfigInput } from "../mapper/ProviderConfigInput.ts";
 import {Mutex} from "es-toolkit";
 import {join} from "node:path";
@@ -51,7 +50,8 @@ interface IntentionContext {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AgentsController extends Controller {
+export class AgentsController {
+    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
     private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private logger = new InternalLogger(__filename);
     private internalAgentSessions: InternalAgentSession[] = [];
@@ -69,8 +69,8 @@ export class AgentsController extends Controller {
         cwd: process.cwd()
     });
 
-    constructor(textToSpeech: TextToSpeech, databaseConnector: DatabaseConnector) {
-        super(databaseConnector);
+    constructor(textToSpeech: TextToSpeech) {
+        super();
         this.textToSpeech = textToSpeech;
     }
     

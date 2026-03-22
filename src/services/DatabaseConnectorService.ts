@@ -1,13 +1,13 @@
 import sqlite3 from 'sqlite3';
-import {InternalLogger} from "./LogConfig.ts";
+import {InternalLogger} from "../LogConfig.ts";
 import {fileURLToPath} from "url";
 import path from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class DatabaseConnector {
-
+export class DatabaseConnectorService {
+    private static instance: DatabaseConnectorService;
     private logger = new InternalLogger(__filename);
     private database = new sqlite3.Database('./database.sqlite', (error: Error | null) => {
         if (error) {
@@ -389,5 +389,12 @@ export class DatabaseConnector {
 
     public close() {
         this.database.close();
+    }
+
+    static getInstance() {
+        if (!DatabaseConnectorService.instance) {
+            DatabaseConnectorService.instance = new DatabaseConnectorService();
+        }
+        return DatabaseConnectorService.instance;
     }
 }
