@@ -50,7 +50,7 @@ export class SessionPanel extends LitElement {
         }
     `;
 
-    clientServerSynchronization = ClientServerSynchronization.getInstance();
+    clientServerSynchronization = null;
     
     selectedSession = null;
 
@@ -67,11 +67,14 @@ export class SessionPanel extends LitElement {
         this.messages = [];
     }
 
-    updated(changedProperties) {
+    async updated(changedProperties) {
         if (changedProperties.has('session') && this.session !== this.selectedSession) {
-            this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
+            if (this.selectedSession) {
+                this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
+                this.clientServerSynchronization.unsubscribeFromRecordVariable("session-" + this.selectedSession.id, "workspace", this.workspaceUpdateCallback);
+            }
             this.selectedSession = this.session;
-            this.init();
+            await this.init();
         }
     }
     
@@ -86,6 +89,7 @@ export class SessionPanel extends LitElement {
     
     deltaListCallback = (newMessageRecord) => {
         this.messages.push(newMessageRecord.get())
+        this.requestUpdate();
     };
     
     workspaceUpdateCallback = (value) => {
@@ -93,12 +97,16 @@ export class SessionPanel extends LitElement {
         this.requestUpdate();
     }
 
-    init() {
+    async init() {
         if (!this.selectedSession) {
             return;
         }
+        this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
+
         this.workspace = this.selectedSession.workspace || "";
+        this.messages = this.selectedSession.messages || [];
         console.log("Session Workspace:", this.selectedSession.workspace);
+        
         this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
         this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.selectedSession.id, "workspace", this.workspaceUpdateCallback);
     }

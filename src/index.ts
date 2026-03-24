@@ -23,8 +23,6 @@ logger.info("Starting database connector")
 let configuration = new Configuration();
 let databaseConnector = DatabaseConnectorService.getInstance();
 await databaseConnector.migrate();
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-await delay(3000);
 logger.info("Starting client/server synchronization")
 let clientServerSynchronization = ClientServerSynchronizationService.getInstance();
 logger.info("Starting express")
@@ -43,7 +41,7 @@ let audioRecording: AudioRecordingController = new AudioRecordingController(audi
 logger.info("Starting environment...")
 
 async function startup() {
-    logger.info("Express listener")
+    logger.info("Express listener");
     express.init();
     logger.info("Agents controller initializing")
     await agentsController.init();
@@ -57,7 +55,6 @@ async function startup() {
     await clientServerSynchronization.init();
     logger.info("Speech to text initializing");
     await speechToText.init();
-
     audioRecording.startRecording();
     textToSpeech.say("Hello!");
 }

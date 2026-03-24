@@ -2,7 +2,7 @@ import { LitElement, html, css } from "lit";
 import { ClientServerSynchronization } from './service/ClientServerSynchronization.js';
 
 
-class AudioStreamContext extends LitElement {
+class AudioStreamContextPanel extends LitElement {
     
     static styles = css`
         :host { 
@@ -32,4 +32,4 @@ class AudioStreamContext extends LitElement {
     }
 }
 
-customElements.define('audio-stream-context', AudioStreamContext);
+customElements.define('audio-stream-context', AudioStreamContextPanel);

@@ -83,10 +83,10 @@ export class AudioPlayingController {
         if (this.isPlaying) {
             return;
         }
-        this.logger.info("Acquire lock" + this.audioMutex.isLocked)
+        this.logger.info("Acquire lock when lock status is: " + this.audioMutex.isLocked)
         await this.audioMutex.acquire();
         if (this.queue.length === 0) {
-            this.logger.info("3Release Lock")
+            this.logger.info("Release Lock because queue is empty")
             this.audioMutex.release();
             return;
         }
@@ -94,22 +94,22 @@ export class AudioPlayingController {
         const next = this.queue.shift();
         if ( !next) {
             this.isPlaying = false;
-            this.logger.info("2Release Lock")
+            this.logger.info("Release Lock because no next entry")
             this.audioMutex.release();
             return;
         }
         try {
-            this.logger.info("playing " + next.filePath + " " + this.audioMutex.isLocked);
+            this.logger.info("playing " + next.filePath + " when lock status is: " + this.audioMutex.isLocked);
             await wavPlayer.play({
                 path: next.filePath,
                 sync: true
             });
-            fs.removeSync(next.filePath)
+            fs.removeSync(next.filePath);
         } catch (err) {
             console.error('Error playing file:', next.filePath, err);
         } finally {
             this.isPlaying = false;
-            this.logger.info("1Release Lock")
+            this.logger.info("Ensuring Release Lock")
             this.audioMutex.release();
             this.playNext();
         }

@@ -18,7 +18,7 @@ export class ExpressWrapperController {
     }
 
     init() {
-        this.port = this.configuration.getConfig("web-port")
+        this.port = this.configuration.getConfig("web-port");
         this.app.use(express.static(path.join(process.cwd(), 'frontend/public')));
 
         this.app.get('/', async (req: Request, res: Response) => {
@@ -26,7 +26,7 @@ export class ExpressWrapperController {
                 status: 'ok',
             });
         });
-        
+
         const server = this.app.listen(this.port, () => {
             this.logger.info(`Server is running at http://localhost:${(this.port)}`);
         });

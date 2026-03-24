@@ -1,6 +1,6 @@
 import {LitElement, html, css} from 'lit';
-import {SessionService, Session} from './service/SessionService.js';
 import './NewSessionPanel.js';
+import {ClientServerSynchronization} from "./service/ClientServerSynchronization.js";
 
 class AppLayout extends LitElement {
     static styles = css`
@@ -178,14 +178,12 @@ class AppLayout extends LitElement {
         },
     };
 
-    sessionService;
     selectedSession;
 
     constructor() {
         super();
         this.selectedPanel = '';
         this.selectedSession = null;
-        this.sessionService = new SessionService();
     }
 
     async connectedCallback() {
@@ -213,9 +211,16 @@ class AppLayout extends LitElement {
     }
 
     async subscribeSessions() {
-        await this.sessionService.subscribe((data) => {
-            console.log("All Sessions: " + JSON.stringify(data));
+        const clientServerSync = await ClientServerSynchronization.getInstance();
+        clientServerSync.getAndSubscribeList("sessions", (recordsList) => {
+            let data = [];
+            recordsList.forEach(record => {
+                data.push(record.get());
+            });
             this.sessions = data;
+            this.requestUpdate();
+        }, (record) => {
+            this.speechContext = data;
             this.requestUpdate();
         });
     }

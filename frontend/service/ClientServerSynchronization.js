@@ -30,17 +30,17 @@ export class ClientServerSynchronization {
         const listObject = this.client.record.getList(listName);
         listObject.whenReady((list) => {
             const currentEntries = list.getEntries();
-            let entryRecords = [];
+            let records = [];
             currentEntries.forEach(recordName => {
                 const recordObject = this.getRecord(recordName);
                 recordObject.whenReady((record) => {
                     const data = record.get();
                     console.log(`Data for ${recordName}:`, data);
-                    entryRecords.push(record);
+                    records.push(record);
                 });
             });
-            console.log('Initial state loaded:', entryRecords);
-            initialCallback(entryRecords);
+            console.log('Initial state loaded:', records);
+            initialCallback(records);
             list.on('entry-added', (recordName, index) => {
                 console.log('DELTA: Only this item added: ', recordName);
                 deltaAddCallback(this.getRecord(recordName));
@@ -55,9 +55,11 @@ export class ClientServerSynchronization {
     }
     
     subscribeOnRecordVariable(recordName, variableName, callback) {
-        this.getRecord(recordName).subscribe(variableName, (data) => {
-            callback(data);
-        });
+        this.getRecord(recordName).subscribe(variableName, callback);
+    }
+
+    unsubscribeFromRecordVariable(recordName, variableName, callback) {
+        this.getRecord(recordName).unsubscribe(variableName, callback);
     }
     
     subscribeOnEvent(eventName, callback) {

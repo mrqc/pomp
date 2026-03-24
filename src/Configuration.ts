@@ -10,11 +10,11 @@ const __dirname = path.dirname(__filename);
 export class Configuration {
     private static readonly CONFIG_FILE = path.resolve(__dirname, '..', 'conf', 'pomp.yml');
     private logger = new InternalLogger(__filename);
-    private config: any;
+    public config: any;
 
     constructor() {
         const fileContent = fs.readFileSync(Configuration.CONFIG_FILE, 'utf8');
-        this.config = yaml.parse(JSON.stringify(fileContent));
+        this.config = yaml.parse(fileContent);
         this.logger.info(this.config);
     }
 
