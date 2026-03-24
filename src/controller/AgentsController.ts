@@ -100,13 +100,16 @@ export class AgentsController {
             this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
             return;
         }
+        this.logger.info("Creating session with prompt: " + text)
         let session: InternalAgentSessionProvisioning | undefined = undefined;
         try {
             await this.modelRegistryMutex.acquire();
             session = this.agentSessions.filter((anInternalSession) => anInternalSession.type == InternalAgentSessionType.MAIN)[0]
+            this.logger.info("Found session: " + (session != undefined))
             if (session == undefined) {
                 session = await this.createSession(text);
                 if (session != undefined) {
+                    this.logger.info("Prompting: " + text)
                     await session.agentSession.prompt(text);
                 }
             } else {
@@ -129,8 +132,11 @@ export class AgentsController {
     }
     
     private async createSession(text: string): Promise<InternalAgentSessionProvisioning> {
+        this.logger.info("Creating new session")
         let session = await this.llmSessionsService.getNewSession();
+        this.logger.info("Session created")
         let internalSession = this.addSession(session, text)
+        this.logger.info("Session added")
         session.subscribe((event) => {
             if ("agent_end" == event.type) {
                 this.logger.info(JSON.stringify(event, null, 2));
@@ -166,20 +172,24 @@ export class AgentsController {
         return internalSession;
     }
 
-    private addSession(session: AgentSession, text: string): InternalAgentSessionProvisioning {
+    private addSession(newAgentSession: AgentSession, text: string): InternalAgentSessionProvisioning {
+        this.logger.info("Trying to add session")
         let newSession = {
             id: uuidv7().toString(),
-            agentSession: session,
+            agentSession: newAgentSession,
             timestamp: Date.now(),
             type: InternalAgentSessionType.MAIN,
             workspace: "New Session",
             messages: [],
             title: text.slice(0, 50) + "…"
         } as InternalAgentSessionProvisioning;
+        this.logger.info("Adding session " + newSession.id);
         this.agentSessions.push(newSession);
-        this.logger.info("Adding session " + JSON.stringify(newSession));
+        this.logger.info("Decomposing session");
         const { agentSession, messages, ...provisioningOnly } = newSession;
+        this.logger.info("Send session to client");
         this.clientServerSynchronization.addListEntry("sessions", "session-" + newSession.id, provisioningOnly as AgentSessionProvisioning);
+        this.addMessageToSession(text, newSession, AgentSessionMessageType.USER);
         return newSession
     }
 }

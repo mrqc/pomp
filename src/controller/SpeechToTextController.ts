@@ -108,7 +108,7 @@ export class SpeechToTextController {
         try {
             let text = await this.putTextIntoPhrases(outputFileName);
             this.clientServerSynchronization.setRecord("SpeechContext", "text", this.getCurrentStreamText());
-            this.logger.info("transformation process length: " + text.length + " active " + this.isActive())
+            this.logger.info("transformation process length: " + text.length + " isActive " + this.isActive())
             if (this.currentStreamTextContainsActivationKeyword()) {
                 this.setActive();
                 this.logger.info("Activation via keyword in context window")

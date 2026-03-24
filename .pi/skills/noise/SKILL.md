@@ -10,7 +10,7 @@ making noise, playing a simple sound and showing that the agent is
 there.
 
 ## Steps
-2. Execute the following command
+1. Execute the following command
 ```bash
 afplay /System/Library/Sounds/Ping.aiff
 ```
