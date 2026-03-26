@@ -1,5 +1,6 @@
 import {LitElement, html, css} from 'lit';
 import './NewSessionPanel.js';
+import './SessionPanel.js';
 import {ClientServerSynchronization} from "./service/ClientServerSynchronization.js";
 
 class AppLayout extends LitElement {
@@ -213,12 +214,13 @@ class AppLayout extends LitElement {
     async subscribeSessions() {
         console.log("subscribeSessions");
         const clientServerSync = await ClientServerSynchronization.getInstance();
-        clientServerSync.getAndSubscribeList("sessions", (recordsList) => {
+        clientServerSync.getAndSubscribeList("sessions", async (recordsList) => {
             console.log("Initial call");
             let data = [];
-            recordsList.forEach(record => {
+            for (let record of recordsList) {
+                await record.whenReady();
                 data.push(record.get());
-            });
+            }
             this.sessions = data;
             this.requestUpdate();
         }, (record) => {
@@ -266,6 +268,7 @@ class AppLayout extends LitElement {
                     ${this.selectedPanel === 'new-session' ? html`
                         <new-session-panel></new-session-panel>
                     ` : ''}
+                    
                     ${this.selectedPanel === 'session' && this.selectedSession ? html`
                         <session-panel .session="${this.selectedSession}"></session-panel>
                     ` : ''}

@@ -11,6 +11,7 @@ export class SessionPanel extends LitElement {
             color: #FFF;
             height: 100%;
             box-sizing: border-box;
+            width: 100%;
         }
         
         #workspace-container {
@@ -65,28 +66,37 @@ export class SessionPanel extends LitElement {
         this.session = null;
     }
 
-    updated(changedProperties) {
+    async connectedCallback() {
+        super.connectedCallback();
+        await this.init();
+    }
+
+    willUpdate(changedProperties) {
+        super.willUpdate(changedProperties);
         if (changedProperties.has('session')) {
-            const oldSession = changedProperties.get('session');
+            const oldSession = this.session;
             if (oldSession && this.clientServerSynchronization) {
                 this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + oldSession.id, this.initialListCallback, this.deltaListCallback);
                 this.clientServerSynchronization.unsubscribeFromRecordVariable("session-" + oldSession.id, "workspace", this.workspaceUpdateCallback);
             }
-            
-            if (this.session) {
-                this.initSession();
-            } else {
-                this.workspace = "";
-                this.messages = [];
-            }
+        }
+    }
+
+    updated(changedProperties) {
+        super.updated(changedProperties);
+        if (changedProperties.has('session')) {
+            this.workspace = "";
+            this.messages = [];
+            this.initSession();
         }
     }
     
-    initialListCallback = (listOfRecords) => {
+    initialListCallback = async (listOfRecords) => {
         let list = [];
-        listOfRecords.forEach(record => {
-            list.push(record.get());
-        });
+        for (let messageRecord of listOfRecords) {
+            await messageRecord.whenReady();
+            list.push(messageRecord.get());
+        }
         this.messages = list || [];
     };
     
@@ -95,7 +105,7 @@ export class SessionPanel extends LitElement {
     };
     
     workspaceUpdateCallback = (value) => {
-        this.workspace = value.get();
+        this.workspace = value;
     }
 
     async init() {
@@ -115,6 +125,9 @@ export class SessionPanel extends LitElement {
     }
 
     render() {
+        if (!this.session) {
+            return html`No session`;
+        }
         return html`
             <div id="workspace-container">
                 ${this.workspace ? unsafeHTML(this.workspace) : html``}
@@ -122,7 +135,7 @@ export class SessionPanel extends LitElement {
             <div id="content-container">
                 ${this.messages.map(message => html`
                     <div class="message">
-                        <div class="message-timestamp">${new Date(message.timestamp).toLocaleString()}</div>
+                        <div class="message-timestamp">${(new Date(message.timestamp)).toLocaleTimeString()}</div>
                         <div class="message-text">${message.text}</div>
                     </div>
                 `)}

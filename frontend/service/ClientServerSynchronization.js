@@ -34,13 +34,7 @@ export class ClientServerSynchronization {
             let records = [];
             currentEntries.forEach(recordName => {
                 console.log("list entry " + recordName);
-                const recordObject = this.getRecord(recordName);
-                recordObject.whenReady((record) => {
-                    console.log("whenReady for record " + recordName);
-                    const data = record.get();
-                    console.log(`Data for ${recordName}:`, data);
-                    records.push(record);
-                });
+                records.push(this.getRecord(recordName));
             });
             console.log('Initial state loaded:', records);
             initialCallback(records);
@@ -62,7 +56,7 @@ export class ClientServerSynchronization {
     }
     
     subscribeOnRecordVariable(recordName, variableName, callback) {
-        this.getRecord(recordName).subscribe(variableName, callback);
+        this.getRecord(recordName).subscribe(variableName, callback, true);
     }
 
     unsubscribeFromRecordVariable(recordName, variableName, callback) {
@@ -71,5 +65,9 @@ export class ClientServerSynchronization {
     
     subscribeOnEvent(eventName, callback) {
         return this.client.event.subscribe(eventName, callback);
+    }
+    
+    sendEvent(eventName, value) {
+        this.client.event.emit(eventName, value);
     }
 }

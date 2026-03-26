@@ -93,6 +93,9 @@ export class AgentsController {
                 this.clientServerSynchronization.sendGuiError("Unable to store LLM provider(s).")
             }
         });
+        this.clientServerSynchronization.subscribeOnEvent("new-message", (newMessageEvent) => {
+            this.prompt(newMessageEvent.text);
+        });
     }
     
     public async prompt(text: string) {
@@ -106,20 +109,15 @@ export class AgentsController {
             await this.modelRegistryMutex.acquire();
             session = this.agentSessions.filter((anInternalSession) => anInternalSession.type == InternalAgentSessionType.MAIN)[0]
             this.logger.info("Found session: " + (session != undefined))
-            if (session == undefined) {
-                session = await this.createSession(text);
-                if (session != undefined) {
-                    this.logger.info("Prompting: " + text)
-                    await session.agentSession.prompt(text);
-                }
-            } else {
-                if (session.agentSession.isStreaming) {
-                    await session.agentSession.followUp(text);
-                } else {
-                    await session.agentSession.prompt(text);
-                }
-            }
+            session ??= await this.createSession(text);
             this.addMessageToSession(text, session, AgentSessionMessageType.USER);
+            if (session.agentSession.isStreaming) {
+                this.logger.info("Followup: " + text)
+                await session.agentSession.followUp(text);
+            } else {
+                this.logger.info("Prompting: " + text)
+                await session.agentSession.prompt(text);
+            }
         } finally {
             this.modelRegistryMutex.release();
         }
@@ -152,7 +150,6 @@ export class AgentsController {
                     }
                 }
                 let relevantMessages = lastUserMessageIndex != -1 ? event.messages.slice(lastUserMessageIndex + 1) : event.messages;
-
                 let assistantMessages = relevantMessages.filter((message: any) => message.role == "assistant");
                 let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
