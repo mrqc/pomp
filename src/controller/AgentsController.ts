@@ -56,7 +56,7 @@ export class AgentsController {
     private llmSessionsService = new LLMSessionsService();
     
     private async getFileContent(filename: string): Promise<string> {
-        const filepath = join(__dirname, "..", filename);
+        const filepath = join(__dirname, "..", "..", filename);
         return await readFile(filepath, "utf-8");
     }
 
@@ -113,7 +113,11 @@ export class AgentsController {
                     await session.agentSession.prompt(text);
                 }
             } else {
-                await session.agentSession.followUp(text);
+                if (session.agentSession.isStreaming) {
+                    await session.agentSession.followUp(text);
+                } else {
+                    await session.agentSession.prompt(text);
+                }
             }
             this.addMessageToSession(text, session, AgentSessionMessageType.USER);
         } finally {
@@ -148,6 +152,7 @@ export class AgentsController {
                     }
                 }
                 let relevantMessages = lastUserMessageIndex != -1 ? event.messages.slice(lastUserMessageIndex + 1) : event.messages;
+
                 let assistantMessages = relevantMessages.filter((message: any) => message.role == "assistant");
                 let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
@@ -162,12 +167,10 @@ export class AgentsController {
             }
         });
         session.setSteeringMode("all");
+        this.logger.info("Steered session");
         await session.steer(await this.getFileContent("INTENTION.md"))
         await session.steer(await this.getFileContent("OWNER.md"))
         await session.steer(await this.getFileContent("SOUL.md"))
-        if (!session.isStreaming) {
-            await session.agent.continue();
-        }
         this.logger.info("Providing prompt " + text + " to session")
         return internalSession;
     }
@@ -187,7 +190,7 @@ export class AgentsController {
         this.agentSessions.push(newSession);
         this.logger.info("Decomposing session");
         const { agentSession, messages, ...provisioningOnly } = newSession;
-        this.logger.info("Send session to client");
+        this.logger.info("Send session to client: " + JSON.stringify(provisioningOnly));
         this.clientServerSynchronization.addListEntry("sessions", "session-" + newSession.id, provisioningOnly as AgentSessionProvisioning);
         this.addMessageToSession(text, newSession, AgentSessionMessageType.USER);
         return newSession

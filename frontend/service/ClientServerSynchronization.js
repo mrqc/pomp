@@ -29,11 +29,14 @@ export class ClientServerSynchronization {
     getAndSubscribeList(listName, initialCallback, deltaAddCallback) {
         const listObject = this.client.record.getList(listName);
         listObject.whenReady((list) => {
+            console.log("whenReady for list " + listName);
             const currentEntries = list.getEntries();
             let records = [];
             currentEntries.forEach(recordName => {
+                console.log("list entry " + recordName);
                 const recordObject = this.getRecord(recordName);
                 recordObject.whenReady((record) => {
+                    console.log("whenReady for record " + recordName);
                     const data = record.get();
                     console.log(`Data for ${recordName}:`, data);
                     records.push(record);
@@ -43,7 +46,11 @@ export class ClientServerSynchronization {
             initialCallback(records);
             list.on('entry-added', (recordName, index) => {
                 console.log('DELTA: Only this item added: ', recordName);
-                deltaAddCallback(this.getRecord(recordName));
+                let record = this.getRecord(recordName);
+                record.whenReady((record) => {
+                    console.log("whenReady in delta for record " + recordName);
+                    deltaAddCallback(record);
+                });
             });
         });
     }

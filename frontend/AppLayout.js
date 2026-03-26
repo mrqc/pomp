@@ -211,8 +211,10 @@ class AppLayout extends LitElement {
     }
 
     async subscribeSessions() {
+        console.log("subscribeSessions");
         const clientServerSync = await ClientServerSynchronization.getInstance();
         clientServerSync.getAndSubscribeList("sessions", (recordsList) => {
+            console.log("Initial call");
             let data = [];
             recordsList.forEach(record => {
                 data.push(record.get());
@@ -220,7 +222,10 @@ class AppLayout extends LitElement {
             this.sessions = data;
             this.requestUpdate();
         }, (record) => {
-            this.speechContext = data;
+            console.log("Delta call");
+            let data = record.get();
+            this.sessions.push(data);
+            console.log("Added " + JSON.stringify(data));
             this.requestUpdate();
         });
     }

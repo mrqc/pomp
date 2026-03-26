@@ -52,8 +52,6 @@ export class SessionPanel extends LitElement {
 
     clientServerSynchronization = null;
     
-    selectedSession = null;
-
     static properties = {
         session: { type: Object },
         workspace: { type: String },
@@ -62,19 +60,25 @@ export class SessionPanel extends LitElement {
 
     constructor() {
         super();
-        this.session = null;
         this.workspace = "";
         this.messages = [];
+        this.session = null;
     }
 
-    async updated(changedProperties) {
-        if (changedProperties.has('session') && this.session !== this.selectedSession) {
-            if (this.selectedSession) {
-                this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
-                this.clientServerSynchronization.unsubscribeFromRecordVariable("session-" + this.selectedSession.id, "workspace", this.workspaceUpdateCallback);
+    updated(changedProperties) {
+        if (changedProperties.has('session')) {
+            const oldSession = changedProperties.get('session');
+            if (oldSession && this.clientServerSynchronization) {
+                this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + oldSession.id, this.initialListCallback, this.deltaListCallback);
+                this.clientServerSynchronization.unsubscribeFromRecordVariable("session-" + oldSession.id, "workspace", this.workspaceUpdateCallback);
             }
-            this.selectedSession = this.session;
-            await this.init();
+            
+            if (this.session) {
+                this.initSession();
+            } else {
+                this.workspace = "";
+                this.messages = [];
+            }
         }
     }
     
@@ -84,31 +88,30 @@ export class SessionPanel extends LitElement {
             list.push(record.get());
         });
         this.messages = list || [];
-        this.requestUpdate();
     };
     
     deltaListCallback = (newMessageRecord) => {
-        this.messages.push(newMessageRecord.get())
-        this.requestUpdate();
+        this.messages = [...this.messages, newMessageRecord.get()];
     };
     
     workspaceUpdateCallback = (value) => {
         this.workspace = value.get();
-        this.requestUpdate();
     }
 
     async init() {
-        if (!this.selectedSession) {
-            return;
+        if (!this.clientServerSynchronization) {
+            this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
         }
-        this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
-
-        this.workspace = this.selectedSession.workspace || "";
-        this.messages = this.selectedSession.messages || [];
-        console.log("Session Workspace:", this.selectedSession.workspace);
-        
-        this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.selectedSession.id, this.initialListCallback, this.deltaListCallback);
-        this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.selectedSession.id, "workspace", this.workspaceUpdateCallback);
+        this.initSession();
+    }
+    
+    initSession() {
+        if (this.session) {
+            this.workspace = this.session.workspace || "";
+            this.messages = this.session.messages || [];
+            this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.session.id, this.initialListCallback, this.deltaListCallback);
+            this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.session.id, "workspace", this.workspaceUpdateCallback);
+        }
     }
 
     render() {
