@@ -28,9 +28,10 @@ color you can do it. But normal text is already styled by the styles existing. A
 whenever you provide some inputs/checkboxes or something else where the user can interact, wrap 
 everything in form tag with the id "workspace-form". This is then later queried and the
 HTML is returned to you such that you can determine what to do next. Also provide an "OK"
-and a "Cancel" button inside the form. The OK button calls at onClick the javascript function
-"interfaceOkCallback" javascript method and the Cancel button calls at onClick the 
-"interfaceCancelCallback" javascript method.
+and a "Cancel" button inside the form. Do not provide any onClick callbacks on these two 
+buttons. Instead, for the OK button add an attribute called data-action which has the value "ok"
+and on the Cancel button add an attribute called data-action which has the value "cancel". Both
+of these two buttons have type="button" and NOT type="submit".
 
 SPEAK: This is the part where you provide information which is going to
 be spoken by a voice. Provide here some short information. Be aware that the whole response

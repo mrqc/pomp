@@ -76,7 +76,7 @@ export class SessionPanel extends LitElement {
         if (changedProperties.has('session')) {
             const oldSession = this.session;
             if (oldSession && this.clientServerSynchronization) {
-                this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + oldSession.id, this.initialListCallback, this.deltaListCallback);
+                this.clientServerSynchronization.unsubscribeFromList("messages-of-session-" + oldSession.id, this.initialMessageListCallback, this.deltaMessageListCallback);
                 this.clientServerSynchronization.unsubscribeFromRecordVariable("session-" + oldSession.id, "workspace", this.workspaceUpdateCallback);
             }
         }
@@ -91,7 +91,7 @@ export class SessionPanel extends LitElement {
         }
     }
     
-    initialListCallback = async (listOfRecords) => {
+    initialMessageListCallback = async (listOfRecords) => {
         let list = [];
         for (let messageRecord of listOfRecords) {
             await messageRecord.whenReady();
@@ -100,8 +100,12 @@ export class SessionPanel extends LitElement {
         this.messages = list || [];
     };
     
-    deltaListCallback = (newMessageRecord) => {
-        this.messages = [...this.messages, newMessageRecord.get()];
+    deltaMessageListCallback = (newMessageRecord) => {
+        let newMessage = newMessageRecord.get();
+        console.log("message: " + JSON.stringify(newMessage));
+        if (this.messages.filter(message => message.id === newMessage.id).length === 0) { 
+            this.messages = [...this.messages, newMessage];
+        }
     };
     
     workspaceUpdateCallback = (value) => {
@@ -119,9 +123,26 @@ export class SessionPanel extends LitElement {
         if (this.session) {
             this.workspace = this.session.workspace || "";
             this.messages = this.session.messages || [];
-            this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.session.id, this.initialListCallback, this.deltaListCallback);
+            this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.session.id, this.initialMessageListCallback, this.deltaMessageListCallback);
             this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.session.id, "workspace", this.workspaceUpdateCallback);
         }
+    }
+
+    handleAction(e) {
+        const action = e.target.getAttribute('data-action');
+        if (action === 'ok') {
+            this.onConfirm();
+        } else if (action === 'cancel') {
+            this.onCancel();
+        }
+    }
+    
+    onConfirm() {
+        console.log("User clicked OK!" + document.getElementById("workspace-container").innerHTML);
+    }
+
+    onCancel() {
+        this.clientServerSynchronization.setRecordVariableValue("SpeechContext", "content", "");
     }
 
     render() {
@@ -129,7 +150,7 @@ export class SessionPanel extends LitElement {
             return html`No session`;
         }
         return html`
-            <div id="workspace-container">
+            <div id="workspace-container" @click="${this.handleAction}">
                 ${this.workspace ? unsafeHTML(this.workspace) : html``}
             </div>
             <div id="content-container">
