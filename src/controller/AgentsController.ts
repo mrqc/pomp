@@ -96,6 +96,9 @@ export class AgentsController {
         this.clientServerSynchronization.subscribeOnEvent("new-message", (newMessageEvent) => {
             this.prompt(newMessageEvent.text);
         });
+        this.clientServerSynchronization.subscribeOnEvent("prompt-ui-response", (data: any) => {
+            this.prompt((JSON.stringify(data.technicalPayload)));
+        })
     }
     
     public async prompt(text: string) {

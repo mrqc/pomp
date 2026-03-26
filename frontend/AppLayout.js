@@ -223,8 +223,9 @@ class AppLayout extends LitElement {
             }
             this.sessions = data;
             this.requestUpdate();
-        }, (record) => {
+        }, async (record) => {
             console.log("Delta call");
+            await record.whenReady();
             let data = record.get();
             this.sessions.push(data);
             console.log("Added " + JSON.stringify(data));

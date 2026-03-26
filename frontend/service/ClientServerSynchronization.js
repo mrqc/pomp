@@ -39,11 +39,21 @@ export class ClientServerSynchronization {
             console.log('Initial state loaded:', records);
             initialCallback(records);
             list.on('entry-added', (recordName, index) => {
-                console.log('DELTA: Only this item added: ', recordName);
+                console.log('DELTA: Only this item added:', recordName);
                 let record = this.getRecord(recordName);
                 record.whenReady((record) => {
-                    console.log("whenReady in delta for record " + recordName);
-                    deltaAddCallback(record);
+                    const data = record.get();
+                    if (Object.keys(data).length > 0) {
+                        deltaAddCallback(record);
+                    } else {
+                        const loadHandler = (data) => {
+                            if (Object.keys(data).length > 0) {
+                                record.unsubscribe(loadHandler);
+                                deltaAddCallback(record);
+                            }
+                        };
+                        record.subscribe(loadHandler, true);
+                    }
                 });
             });
         });

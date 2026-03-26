@@ -100,9 +100,13 @@ export class SessionPanel extends LitElement {
         this.messages = list || [];
     };
     
-    deltaMessageListCallback = (newMessageRecord) => {
+    deltaMessageListCallback = async (newMessageRecord) => {
+        await newMessageRecord.whenReady();
         let newMessage = newMessageRecord.get();
         console.log("message: " + JSON.stringify(newMessage));
+        if (Object.keys(newMessage).length === 0 && newMessage.constructor === Object) {
+            return;
+        }
         if (this.messages.filter(message => message.id === newMessage.id).length === 0) { 
             this.messages = [...this.messages, newMessage];
         }
@@ -113,13 +117,11 @@ export class SessionPanel extends LitElement {
     }
 
     async init() {
-        if (!this.clientServerSynchronization) {
-            this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
-        }
-        this.initSession();
+        await this.initSession();
     }
     
-    initSession() {
+    async initSession() {
+        this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
         if (this.session) {
             this.workspace = this.session.workspace || "";
             this.messages = this.session.messages || [];
@@ -138,11 +140,23 @@ export class SessionPanel extends LitElement {
     }
     
     onConfirm() {
-        console.log("User clicked OK!" + document.getElementById("workspace-container").innerHTML);
+        let form = this.renderRoot.querySelector('#workspace-container form');
+        if (form) {
+            const formData = new FormData(form);
+            const data = {};
+            for (const key of formData.keys()) {
+                const values = formData.getAll(key);
+                data[key] = values.length > 1 ? values : values[0];
+            }
+            console.log(data);
+            this.clientServerSynchronization.sendEvent("prompt-ui-response", {
+                technicalPayload: data
+            });
+        }
     }
 
     onCancel() {
-        this.clientServerSynchronization.setRecordVariableValue("SpeechContext", "content", "");
+        this.renderRoot.getElementById('workspace-container').innerHTML = "";
     }
 
     render() {
