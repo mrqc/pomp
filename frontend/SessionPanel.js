@@ -1,6 +1,8 @@
 import { LitElement, html, css } from "lit";
 import {ClientServerSynchronization} from "./service/ClientServerSynchronization.js";
 import {unsafeHTML} from "lit/directives/unsafe-html.js";
+import { cache } from 'lit/directives/cache.js';
+import { repeat } from 'lit/directives/repeat.js';
 
 export class SessionPanel extends LitElement {
     static styles = css`
@@ -132,14 +134,9 @@ export class SessionPanel extends LitElement {
 
     handleAction(e) {
         const action = e.target.getAttribute('data-action');
-        if (action === 'ok') {
-            this.onConfirm();
-        } else if (action === 'cancel') {
-            this.onCancel();
+        if (action == null) {
+            return;
         }
-    }
-    
-    onConfirm() {
         let form = this.renderRoot.querySelector('#workspace-container form');
         if (form) {
             const formData = new FormData(form);
@@ -150,13 +147,36 @@ export class SessionPanel extends LitElement {
             }
             console.log(data);
             this.clientServerSynchronization.sendEvent("prompt-ui-response", {
-                technicalPayload: data
+                technicalPayload: data,
+                action: action
             });
         }
+        this.renderRoot.getElementById('workspace-container').innerHTML = "";
     }
 
-    onCancel() {
-        this.renderRoot.getElementById('workspace-container').innerHTML = "";
+    renderWorkspace() {
+        try {
+            if (!this.workspace) {
+                return html``;
+            }
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(this.workspace, 'text/html');
+            const errorNode = doc.querySelector('parsererror');
+
+            if (errorNode) {
+                setTimeout(() => {
+                    this.renderWorkspace()
+                }, 100);
+            }
+
+            return unsafeHTML(this.workspace);
+        } catch (e) {
+            setTimeout(() => {
+                this.renderWorkspace()
+            }, 100);
+            return "Wait";
+        }
+        //cache(this.workspace ? unsafeHTML(this.workspace) : html``)
     }
 
     render() {
@@ -165,18 +185,18 @@ export class SessionPanel extends LitElement {
         }
         return html`
             <div id="workspace-container" @click="${this.handleAction}">
-                ${this.workspace ? unsafeHTML(this.workspace) : html``}
+                ${this.renderWorkspace()}
             </div>
             <div id="content-container">
-                ${this.messages.map(message => html`
+                ${repeat(this.messages, (m) => m.id || m.timestamp, (message) => html`
                     <div class="message">
-                        <div class="message-timestamp">${(new Date(message.timestamp)).toLocaleTimeString()}</div>
+                        <div class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString()}</div>
                         <div class="message-text">${message.text}</div>
                     </div>
                 `)}
             </div>
         `;
     }
-}
+} 
 
 customElements.define('session-panel', SessionPanel);

@@ -97,7 +97,8 @@ export class AgentsController {
             this.prompt(newMessageEvent.text);
         });
         this.clientServerSynchronization.subscribeOnEvent("prompt-ui-response", (data: any) => {
-            this.prompt((JSON.stringify(data.technicalPayload)));
+            this.prompt(`${JSON.stringify(data.technicalPayload)} 
+                The action performed is ${data.action} which you must consider when providing a response.`);
         })
     }
     
