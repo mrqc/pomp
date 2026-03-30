@@ -61,10 +61,10 @@ export class DatabaseConnectorService {
         await this.ensureFloatConfig('AudioRecording', 'defaultRecordingDuration', 0.25);
         await this.ensureIntConfig('SpeechToText', 'secondsToLooseText', 10);
         await this.ensureStringConfig('SpeechToText', 'activationKeywords', "buddy");
-        await this.ensureStringConfig('SpeechToText', 'modelName', 'small.en');
+        await this.ensureStringConfig('SpeechToText', 'modelName', 'tiny.en');
         await this.ensureBoolConfig('SpeechToText', 'splitOnWord', false);
         await this.ensureBoolConfig('SpeechToText', 'translateToEnglish', false);
-        await this.ensureFloatConfig('TextToSpeech', 'textSpeed', 1.4);
+        await this.ensureFloatConfig('TextToSpeech', 'textSpeed', 1.3);
         await this.ensureStringConfig('TextToSpeech', 'modelId', 'onnx-community/Kokoro-82M-v1.0-ONNX');
     }
     

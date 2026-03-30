@@ -40,8 +40,10 @@ export class InteractionLayer extends LitElement {
     handPose;
     hands = [];
     video;
-    pxs = [];
-    pys = [];
+    smootherXPoints = [];
+    smootherYPoints = [];
+    historyXPoints = [];
+    historyYPoints = [];
     p5Instance;
     canvasWidth = window.innerWidth;
     canvasHeight = window.innerHeight;
@@ -95,19 +97,12 @@ export class InteractionLayer extends LitElement {
                     videoWidth,
                     videoHeight);
                 if (this.hands.length > 0) {
-                    let hand = this.hands[0];
-                    let index = hand.index_finger_tip;
-                    let thumb = hand.thumb_tip;
-                    let middle = hand.middle_finger_tip;
-                    let ring = hand.ring_finger_tip;
-                    let pinky = hand.pinky_finger_tip;
-
                     let paddingX = 800;
                     let paddingY = 500;
-                    let sumPxs = this.pxs.reduce((acc, val) => acc + val, 0);
-                    let sumPys = this.pys.reduce((acc, val) => acc + val, 0);
-                    let x = (index.x + thumb.x + sumPxs) * 1.0 / (2.0 + this.pxs.length);
-                    let y = (index.y + thumb.y + sumPys) * 1.0 / (2.0 + this.pys.length);
+                    let sumPxs = this.smootherXPoints.reduce((acc, val) => acc + val, 0);
+                    let sumPys = this.smootherYPoints.reduce((acc, val) => acc + val, 0);
+                    let x = (index.x + thumb.x + sumPxs) * 1.0 / (2.0 + this.smootherXPoints.length);
+                    let y = (index.y + thumb.y + sumPys) * 1.0 / (2.0 + this.smootherYPoints.length);
                     let ratioX = x / (videoWidth);
                     let ratioY = y / (videoHeight);
                     let transformedX = (this.canvasWidth) * ratioX;
@@ -116,85 +111,171 @@ export class InteractionLayer extends LitElement {
                     let paddingXRatio = (x - videoWidth / 2) / (videoWidth / 2);
                     let paddingYRatio = (y - videoHeight / 2) / (videoHeight / 2);
 
-                    let d1 = sketch.dist(index.x, index.y, thumb.x, thumb.y);
-                    let d2 = sketch.dist(middle.x, middle.y, thumb.x, thumb.y);
-                    let d3 = sketch.dist(ring.x, ring.y, thumb.x, thumb.y);
-                    let d4 = sketch.dist(pinky.x, pinky.y, thumb.x, thumb.y);
-
                     let domX = (this.canvasWidth - transformedX) - paddingX * paddingXRatio;
                     let domY = (transformedY) + paddingY * paddingYRatio;
 
-                    function getDeepestElementFromPoint(x, y) {
-                        let el = document.elementFromPoint(x, y);
-                        let deepest = el;
-                        while (el && el.shadowRoot) {
-                            // elementFromPoint in shadowRoot uses coordinates relative to the viewport
-                            const inner = el.shadowRoot.elementFromPoint(x, y);
-                            if (!inner || inner === el) break;
-                            deepest = inner;
-                            el = inner;
-                        }
-                        return deepest;
-                    }
-
-                    if (d1 < 25 && d2 < 25 && d3 < 25 && d4 < 25) {
-                        console.log(d1 + " " + d2 + " " + d3 + " " + d4)
-                        if (!this.isPinching) {
+                    if (this.isHandPoseClosing(sketch, this.hands[0])) {
+                        if ( !this.isPinching) {
                             const clientServerSync = await ClientServerSynchronization.getInstance();
                             clientServerSync.setRecordVariableValue("SpeechContext", "content", "");
                             return
                         }
                     }
+                    
+                    if (this.isScrollingMoveHorizontal(sketch, this.hands[0])) {
+                        return;
+                    }
+                    
+                    if (this.isScrollingMoveVertical(sketch, this.hands[0])) {
+                        return;
+                    }
 
-                    if (d1 < 20) {
+                    if (this.isClicking(sketch, this.hands[0])) {
                         if (!this.isPinching) {
                             this.isPinching = true;
-                            const target = getDeepestElementFromPoint(domX, domY);
+                            const target = this.getDeepestElementFromPoint(domX, domY);
                             if (target) {
-                                let event = {
-                                    view: window,
-                                    bubbles: true,
-                                    cancelable: true,
-                                    composed: true,
-                                    clientX: domX,
-                                    clientY: domY
-                                };
-                                target.dispatchEvent(new MouseEvent('mousedown', event));
-                                target.dispatchEvent(new MouseEvent('mouseup', event));
-                                target.dispatchEvent(new MouseEvent('click', event));
-                                const tag = target.tagName.toLowerCase();
-                                if (tag === "input" || tag === "textarea") {
-                                    target.focus();
-                                    if (target.type === "checkbox" || target.type === "radio") {
-                                        target.checked = !target.checked;
-                                        target.dispatchEvent(new Event('change', {bubbles: true}));
-                                    }
-                                } else if (tag === "select") {
-                                    target.focus();
-                                    target.dispatchEvent(new MouseEvent('mousedown', event));
-                                    target.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true}));
-                                }
+                                this.simulateClickOnElement(domX, domY, target);
                             }
                         }
                     } else {
                         this.isPinching = false;
                     }
-                    if (domPointer) {
-                        domPointer.style.left = `${domX - 2.5}px`;
-                        domPointer.style.top = `${domY - 2.5}px`;
-                    }
-                    this.pxs.push(x);
-                    this.pys.push(y);
-                    let maxElements = 3;
-                    if (this.pxs.length > maxElements) {
-                        this.pxs = this.pxs.slice(-maxElements);
-                    }
-                    if (this.pys.length > maxElements) {
-                        this.pys = this.pys.slice(-maxElements);
-                    }
+                    this.handleHandPointer(domPointer, domX, domY, x, y);
+                    this.handleCoordinatesHistory(x, y);
                 }
             };
         }, container);
+    }
+    
+    isClicking(sketch, hand) {
+        let index = hand.index_finger_tip;
+        let thumb = hand.thumb_tip;
+        let distanceIndexToThumb = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+        return distanceIndexToThumb < 20;
+    }
+
+    isScrollingMoveHorizontal(sketch, hand) {
+        let index = hand.index_finger_tip;
+        let middle = hand.middle_finger_tip;
+        let ring = hand.ring_finger_tip;
+        let pinky = hand.pinky_finger_tip;
+        let distanceIndexToMiddle = sketch.dist(index.x, index.y, middle.x, middle.y);
+        let distanceMiddleToRing = sketch.dist(middle.x, middle.y, ring.x, ring.y);
+        let distanceRingToPinky = sketch.dist(ring.x, ring.y, pinky.x, pinky.y);
+        console.log(distanceIndexToMiddle + " " + distanceMiddleToRing + " " + distanceRingToPinky);
+        let isCloseDistances = distanceIndexToMiddle < 25 && distanceMiddleToRing < 25 && distanceRingToPinky < 25;
+        let isHorizontal = Math.abs(index.y - middle.y) < 10 && Math.abs(middle.y - ring.y) < 10 && Math.abs(ring.y - pinky.y) < 10;
+        return isCloseDistances && isHorizontal;
+    }
+    
+    getScrollingMoveHorizontalDistance() {
+        if (this.historyYPoints.length > 1) {
+            return this.historyYPoints.at(-1) - this.historyYPoints.at(-2);
+        }
+        return 0;
+    }
+
+    getScrollingMoveVerticalDistance() {
+        if (this.historyXPoints.length > 1) {
+            return this.historyXPoints.at(-1) - this.historyXPoints.at(-2);
+        }
+        return 0;
+    }
+
+    isScrollingMoveVertical(sketch, hand) {
+        let index = hand.index_finger_tip;
+        let middle = hand.middle_finger_tip;
+        let ring = hand.ring_finger_tip;
+        let pinky = hand.pinky_finger_tip;
+        let distanceIndexToMiddle = sketch.dist(index.x, index.y, middle.x, middle.y);
+        let distanceMiddleToRing = sketch.dist(middle.x, middle.y, ring.x, ring.y);
+        let distanceRingToPinky = sketch.dist(ring.x, ring.y, pinky.x, pinky.y);
+        console.log(distanceIndexToMiddle + " " + distanceMiddleToRing + " " + distanceRingToPinky);
+        let isCloseDistances = distanceIndexToMiddle < 25 && distanceMiddleToRing < 25 && distanceRingToPinky < 25;
+        let isVertical = Math.abs(index.x - middle.x) < 10 && Math.abs(middle.x - ring.x) < 10 && Math.abs(ring.x - pinky.x) < 10;
+        return isCloseDistances && isVertical;
+    }
+
+    isHandPoseClosing(sketch, hand) {
+        let index = hand.index_finger_tip;
+        let thumb = hand.thumb_tip;
+        let middle = hand.middle_finger_tip;
+        let ring = hand.ring_finger_tip;
+        let pinky = hand.pinky_finger_tip;
+        let distanceIndexToThumb = sketch.dist(index.x, index.y, thumb.x, thumb.y);
+        let distanceMiddleToThumb = sketch.dist(middle.x, middle.y, thumb.x, thumb.y);
+        let distanceRingToThumb = sketch.dist(ring.x, ring.y, thumb.x, thumb.y);
+        let distancePinkyToThumb = sketch.dist(pinky.x, pinky.y, thumb.x, thumb.y);
+        console.log(distanceIndexToThumb + " " + distanceMiddleToThumb + " " + distanceRingToThumb + " " + distancePinkyToThumb);
+        return distanceIndexToThumb < 25 && distanceMiddleToThumb < 25 && distanceRingToThumb < 25 && distancePinkyToThumb < 25;
+    }
+
+    handleCoordinatesHistory(x, y) {
+        this.historyXPoints.push(x);
+        this.historyYPoints.push(y);
+        let maxElements = 20;
+        if (this.historyXPoints.length > maxElements) {
+            this.historyXPoints = this.historyXPoints.slice(-maxElements);
+        }
+        if (this.historyYPoints.length > maxElements) {
+            this.historyYPoints = this.historyYPoints.slice(-maxElements);
+        }
+    }
+
+    handleHandPointer(domPointer, domX, domY, x, y) {
+        if (domPointer) {
+            domPointer.style.left = `${domX - 2.5}px`;
+            domPointer.style.top = `${domY - 2.5}px`;
+        }
+        this.smootherXPoints.push(x);
+        this.smootherYPoints.push(y);
+        let maxElements = 3;
+        if (this.smootherXPoints.length > maxElements) {
+            this.smootherXPoints = this.smootherXPoints.slice(-maxElements);
+        }
+        if (this.smootherYPoints.length > maxElements) {
+            this.smootherYPoints = this.smootherYPoints.slice(-maxElements);
+        }
+    }
+
+    simulateClickOnElement(domX, domY, target) {
+        let event = {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            clientX: domX,
+            clientY: domY
+        };
+        target.dispatchEvent(new MouseEvent('mousedown', event));
+        target.dispatchEvent(new MouseEvent('mouseup', event));
+        target.dispatchEvent(new MouseEvent('click', event));
+        const tag = target.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea") {
+            target.focus();
+            if (target.type === "checkbox" || target.type === "radio") {
+                target.checked = !target.checked;
+                target.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+        } else if (tag === "select") {
+            target.focus();
+            target.dispatchEvent(new MouseEvent('mousedown', event));
+            target.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true}));
+        }
+    }
+
+    getDeepestElementFromPoint(x, y) {
+        let el = document.elementFromPoint(x, y);
+        let deepest = el;
+        while (el && el.shadowRoot) {
+            // elementFromPoint in shadowRoot uses coordinates relative to the viewport
+            const inner = el.shadowRoot.elementFromPoint(x, y);
+            if (!inner || inner === el) break;
+            deepest = inner;
+            el = inner;
+        }
+        return deepest;
     }
 
     render() {

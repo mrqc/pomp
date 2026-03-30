@@ -60,7 +60,7 @@ class NewSessionPanel extends LitElement {
         const textarea = this.shadowRoot.querySelector('textarea');
         const text = textarea.value;
         const clientServerSync = await ClientServerSynchronization.getInstance();
-        clientServerSync.sendEvent("new-message", {
+        clientServerSync.sendEvent("new-session-via-message", {
             text: text
         });
         textarea.value = '';

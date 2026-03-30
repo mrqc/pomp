@@ -1,8 +1,8 @@
 import { LitElement, html, css } from "lit";
 import {ClientServerSynchronization} from "./service/ClientServerSynchronization.js";
 import {unsafeHTML} from "lit/directives/unsafe-html.js";
-import { cache } from 'lit/directives/cache.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { query } from 'lit/decorators.js';
 
 export class SessionPanel extends LitElement {
     static styles = css`
@@ -51,6 +51,50 @@ export class SessionPanel extends LitElement {
             line-height: 1.4;
             word-break: break-word;
         }
+
+        #input-container {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid #444;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 8px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 0.95em;
+            box-sizing: border-box;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: #666;
+            background-color: #333;
+        }
+
+        #submit-button {
+            padding: 8px 16px;
+            background-color: #0e639c;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #submit-button:hover {
+            background-color: #1177bb;
+        }
+
+        #submit-button:active {
+            background-color: #0a4a7a;
+        }
     `;
 
     clientServerSynchronization = null;
@@ -83,11 +127,19 @@ export class SessionPanel extends LitElement {
             }
         }
     }
+    
+    updateWorkspace(value) {
+        this.workspace = value;
+        this.requestUpdate();
+        setTimeout(() => {
+            this.shadowRoot.addEventListener('click', (e) => this.handleAction(e));
+        }, 300)
+    }
 
     updated(changedProperties) {
         super.updated(changedProperties);
         if (changedProperties.has('session')) {
-            this.workspace = "";
+            this.updateWorkspace("")
             this.messages = [];
             this.initSession();
         }
@@ -112,10 +164,17 @@ export class SessionPanel extends LitElement {
         if (this.messages.filter(message => message.id === newMessage.id).length === 0) { 
             this.messages = [...this.messages, newMessage];
         }
+        this.requestUpdate();
+        // Wait for DOM to update before scrolling
+        await this.updateComplete;
+        const container = this.shadowRoot?.querySelector('#content-container');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
     };
     
     workspaceUpdateCallback = (value) => {
-        this.workspace = value;
+        this.updateWorkspace(value);
     }
 
     async init() {
@@ -125,7 +184,7 @@ export class SessionPanel extends LitElement {
     async initSession() {
         this.clientServerSynchronization = await ClientServerSynchronization.getInstance();
         if (this.session) {
-            this.workspace = this.session.workspace || "";
+            this.updateWorkspace(this.session.workspace || "");
             this.messages = this.session.messages || [];
             this.clientServerSynchronization.getAndSubscribeList("messages-of-session-" + this.session.id, this.initialMessageListCallback, this.deltaMessageListCallback);
             this.clientServerSynchronization.subscribeOnRecordVariable("session-" + this.session.id, "workspace", this.workspaceUpdateCallback);
@@ -147,36 +206,29 @@ export class SessionPanel extends LitElement {
             }
             console.log(data);
             this.clientServerSynchronization.sendEvent("prompt-ui-response", {
+                sessionId: this.session.id,
                 technicalPayload: data,
                 action: action
             });
         }
-        this.renderRoot.getElementById('workspace-container').innerHTML = "";
+        this.updateWorkspace("");
     }
 
-    renderWorkspace() {
-        try {
-            if (!this.workspace) {
-                return html``;
-            }
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(this.workspace, 'text/html');
-            const errorNode = doc.querySelector('parsererror');
-
-            if (errorNode) {
-                setTimeout(() => {
-                    this.renderWorkspace()
-                }, 100);
-            }
-
-            return unsafeHTML(this.workspace);
-        } catch (e) {
-            setTimeout(() => {
-                this.renderWorkspace()
-            }, 100);
-            return "Wait";
+    sendMessage() {
+        const input = this.shadowRoot.querySelector('#message-input');
+        const messageText = input.value.trim();
+        
+        if (!messageText) {
+            return;
         }
-        //cache(this.workspace ? unsafeHTML(this.workspace) : html``)
+
+        if (this.clientServerSynchronization && this.session) {
+            this.clientServerSynchronization.sendEvent("new-session-message", {
+                sessionId: this.session.id,
+                text: messageText
+            });
+            input.value = '';
+        }
     }
 
     render() {
@@ -184,8 +236,8 @@ export class SessionPanel extends LitElement {
             return html`No session`;
         }
         return html`
-            <div id="workspace-container" @click="${this.handleAction}">
-                ${this.renderWorkspace()}
+            <div id="workspace-container">
+                ${this.workspace ? html`${unsafeHTML(this.workspace)}` : html``}
             </div>
             <div id="content-container">
                 ${repeat(this.messages, (m) => m.id || m.timestamp, (message) => html`
@@ -194,6 +246,18 @@ export class SessionPanel extends LitElement {
                         <div class="message-text">${message.text}</div>
                     </div>
                 `)}
+                <div id="input-container">
+                    <input 
+                        id="message-input" 
+                        type="text" 
+                        placeholder="Type a message..."
+                        @keypress="${(e) => e.key === 'Enter' && this.sendMessage()}"
+                    />
+                    <button 
+                        id="submit-button" 
+                        @click="${() => this.sendMessage()}"
+                    >Send</button>
+                </div>
             </div>
         `;
     }

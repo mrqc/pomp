@@ -201,13 +201,17 @@ class AppLayout extends LitElement {
         this.selectedSession = null;
     }
 
-    handleSessionClick(session) {
+    async handleSessionClick(session) {
         this.selectedPanel = 'session';
         this.selectedSession = session;
         const event = new CustomEvent('session-changed', {
             detail: session,
             composed: true
         });
+        let clientServerSynchronization = await ClientServerSynchronization.getInstance();
+        clientServerSynchronization.sendEvent("change-current-session", {
+            sessionId: this.selectedSession.id
+        })
         this.dispatchEvent(event);
     }
 
@@ -245,7 +249,6 @@ class AppLayout extends LitElement {
 
                 <nav class="sidebar">
                     <ul>
-                        <li @click="${() => this.handleMenuClick('workspace')}" class="${this.selectedPanel === 'workspace' ? 'active' : ''}">Workspace</li>
                         <li @click="${() => this.handleMenuClick('new-session')}" class="${this.selectedPanel === 'new-session' ? 'active' : ''}">New Session</li>
                         ${this.sessions && this.sessions.length > 0 ? this.sessions.map(session => html`
                             <li
@@ -267,12 +270,9 @@ class AppLayout extends LitElement {
 
                 <main class="main-content">
                     ${this.selectedPanel === 'new-session' ? html`
-                        <new-session-panel></new-session-panel>
-                    ` : ''}
-                    
+                        <new-session-panel></new-session-panel>` : ''}
                     ${this.selectedPanel === 'session' && this.selectedSession ? html`
-                        <session-panel .session="${this.selectedSession}"></session-panel>
-                    ` : ''}
+                        <session-panel .session="${this.selectedSession}"></session-panel>` : ''}
                     ${this.selectedPanel === 'llm' ? html`
                         <llm-configuration-panel></llm-configuration-panel>` : ''}
                     ${this.selectedPanel === 'audio-recording' ? html`
@@ -281,8 +281,6 @@ class AppLayout extends LitElement {
                         <speech-to-text-configuration-panel></speech-to-text-configuration-panel>` : ''}
                     ${this.selectedPanel === 'text-to-speech' ? html`
                         <text-to-speech-configuration-panel></text-to-speech-configuration-panel>` : ''}
-                    ${this.selectedPanel === 'workspace' ? html`
-                        <workspace-panel></workspace-panel>` : ''}
                 </main>
             </div>
         `;

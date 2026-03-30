@@ -4,7 +4,7 @@ import type {Logger} from "nodejs-whisper/dist/types";
 import fs from "fs-extra";
 import path from "node:path";
 import {fileURLToPath} from "url";
-import type {AgentsController} from "./AgentsController.ts";
+import {type AgentsController, AgentSessionMessageType, InternalAgentSessionType} from "./AgentsController.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 
@@ -17,18 +17,19 @@ interface Phrase {
 }
 
 export class SpeechToTextController {
-    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
-    private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
+    private readonly databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
+    private readonly clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly TRANSLATION_DIR = path.resolve(__dirname, 'translations');
     private static secondsToLooseText = 10;
     private static modelName = 'tiny.en';
     private static activationKeywords = ["buddy"];
     private static translateToEnglish: boolean = false;
     private static splitOnWord: boolean = false;
-    private logger = new InternalLogger(__filename);
+    private readonly logger = new InternalLogger(__filename);
     public phrases: Phrase[] = [];
-    private agentsController: AgentsController;
+    private readonly agentsController: AgentsController;
     private isActivatedByKeyword: boolean = false;
+    private currentSessionId: string | null = null;
     
     constructor(agentsController: AgentsController) {
         SpeechToTextController.cleanup();
@@ -75,6 +76,9 @@ export class SpeechToTextController {
             SpeechToTextController.splitOnWord = await this.databaseConnector.getBooleanConfig("SpeechToText", "splitOnWord");
             this.clientServerSynchronization.sendGuiInfo("Split on word changed to " + SpeechToTextController.splitOnWord)
         });
+        this.clientServerSynchronization.subscribeOnEvent("change-current-session", async(data: any) => {
+            this.currentSessionId = data.sessionId
+        });
     }
 
     async writeAudioFileToTextStream(outputFileName: string) {
@@ -86,10 +90,9 @@ export class SpeechToTextController {
     private cleanupTranscribedString(text: string): string {
         const squaredBracketsRegex: RegExp = /\[[^\]]+\]/g;
         const roundBracketsRegex: RegExp = /\([^\)]+\)/g;
-        const clearedString: string = text.replace(squaredBracketsRegex, "")
-            .replace(roundBracketsRegex, "")
+        return text.replaceAll(squaredBracketsRegex, "")
+            .replaceAll(roundBracketsRegex, "")
             .trim();
-        return clearedString;
     }
     
     private setActive() {
@@ -114,7 +117,7 @@ export class SpeechToTextController {
                 this.logger.info("Activation via keyword in context window")
                 let currentContextWindow = this.getCurrentStreamText();
                 this.phrases = []
-                await this.agentsController.prompt(currentContextWindow);
+                await this.agentsController.prompt(currentContextWindow, AgentSessionMessageType.USER_INPUT, this.currentSessionId, InternalAgentSessionType.USER_VOICE_INITIATED);
             } else if ( !this.isActive()) {
                 this.logger.info("Cleaning up context window")
                 this.removeOutdatedPhrasesFromContextWindow();
@@ -134,9 +137,7 @@ export class SpeechToTextController {
         let text = data.transcription.map((item: any) => item.text)
             .join(' ');
         text = this.cleanupTranscribedString(text);
-        if (text == null) {
-            text = "";
-        }
+        text ??= "";
         if (text.length > 0) {
             this.phrases.push({
                 text: text,
@@ -175,7 +176,7 @@ export class SpeechToTextController {
                 removeWavFileAfterTranscription: !InternalLogger.isDebug(),
                 withCuda: true,
                 logger: new class implements Logger {
-                    private logger = new InternalLogger(__filename)
+                    private readonly logger = new InternalLogger(__filename)
 
                     debug(args: any): void {
                         this.logger.debug(JSON.stringify(args))
