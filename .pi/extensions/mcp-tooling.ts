@@ -1,9 +1,8 @@
 import {type ExtensionAPI, type ExtensionContext} from "@mariozechner/pi-coding-agent";
-import {MultiMCPClient} from "../../src/mcp/client/MultiMCPClient.ts";
+import {MultiMCPClient, multiMcpClient} from "../../src/mcp/client/MultiMCPClient.ts";
 import {type Static, Type} from "@mariozechner/pi-ai";
 import {InternalLogger} from "../../src/LogConfig.ts";
 import {fileURLToPath} from "url";
-import {multiMcpClient} from "../../src";
 
 const __filename = fileURLToPath(import.meta.url);
 

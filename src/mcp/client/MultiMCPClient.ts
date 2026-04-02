@@ -133,9 +133,11 @@ export class MultiMCPClient {
     }
 
     static getInstance() {
-        if (!MultiMCPClient.instance) {
-            MultiMCPClient.instance = new MultiMCPClient();
+        if (!(globalThis as any).multiMcpClientInstance) {
+            (globalThis as any).multiMcpClientInstance = new MultiMCPClient();
         }
-        return MultiMCPClient.instance;
+        return (globalThis as any).multiMcpClientInstance;
     }
 }
+
+export const multiMcpClient = MultiMCPClient.getInstance();

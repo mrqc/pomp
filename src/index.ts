@@ -12,7 +12,7 @@ import {ClientServerSynchronizationService} from "./services/ClientServerSynchro
 import {DatabaseConnectorService} from "./services/DatabaseConnectorService.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
-import {MultiMCPClient} from "./mcp/client/MultiMCPClient.ts";
+import {MultiMCPClient, multiMcpClient} from "./mcp/client/MultiMCPClient.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,7 +39,6 @@ let speechToText: SpeechToTextController = new SpeechToTextController(agentsCont
 logger.info("Starting audio recording")
 let audioRecording: AudioRecordingController = new AudioRecordingController(audioMutex, speechToText, textToSpeech, audioPlaying);
 logger.info("Starting MCP Server")
-export const multiMcpClient = MultiMCPClient.getInstance();
 
 logger.info("Starting environment...")
 
