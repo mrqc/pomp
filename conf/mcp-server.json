@@ -4,6 +4,17 @@
       "command": "npx",
       "args": ["-y", "@playwright/mcp", "--browser", "chrome"],
       "description": "Browser automation and testing via Playwright"
+    },
+    "weather": {
+      "command": "npx",
+      "args": ["-y", "@dangahagan/weather-mcp@latest"],
+      "description": "Provides weather information for specified locations"
+    },
+    "whatsapp": {
+      "command": "node",
+      "args": [
+        "./3rd-party/mcp-whatsapp-web/dist/index.js"
+      ]
     }
   }
 }

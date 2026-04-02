@@ -39,11 +39,13 @@ let speechToText: SpeechToTextController = new SpeechToTextController(agentsCont
 logger.info("Starting audio recording")
 let audioRecording: AudioRecordingController = new AudioRecordingController(audioMutex, speechToText, textToSpeech, audioPlaying);
 logger.info("Starting MCP Server")
-let multiMcpClient = MultiMCPClient.getInstance();
+export const multiMcpClient = MultiMCPClient.getInstance();
 
 logger.info("Starting environment...")
 
 async function startup() {
+    logger.info("Setting rootPath to " + process.cwd());
+    multiMcpClient.rootPath = process.cwd();
     logger.info("Express listener");
     express.init();
     logger.info("Agents controller initializing")
@@ -59,7 +61,6 @@ async function startup() {
     logger.info("Speech to text initializing");
     await speechToText.init();
     logger.info("MCP Server initialization")
-    await multiMcpClient.connectAll();
     audioRecording.startRecording();
     textToSpeech.say("Hello!");
 }

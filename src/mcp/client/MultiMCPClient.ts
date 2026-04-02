@@ -19,10 +19,12 @@ export class MultiMCPClient {
     private readonly configs: ServerConfig[] = [];
     private readonly logger = new InternalLogger(__filename);
     private static instance: MultiMCPClient;
+    public rootPath: string = "";
 
     constructor() {
         const configPath = path.resolve(process.cwd(), "conf", "mcp-server.json");
         if (fs.existsSync(configPath)) {
+            this.logger.info(`Loading MCP server configuration from ${configPath}`);
             const fileContent = fs.readFileSync(configPath, "utf8");
             const data = JSON.parse(fileContent);
             if (data.mcpServers) {
@@ -35,28 +37,41 @@ export class MultiMCPClient {
                         description: serverConfig.description,
                     });
                 }
+                this.logger.info(`Loaded ${this.configs.length} MCP server configurations`);
             }
+        } else {
+            this.logger.info(`MCP server configuration not found at ${configPath}`);
         }
     }
 
     async connectAll() {
+        this.logger.info(`Connecting to ${this.configs.length} MCP servers...`);
         for (const config of this.configs) {
+            this.logger.info(`Trying MCP server: ${config.name}`);
             try {
+                this.logger.info("CWD: " + this.rootPath);
                 const transport = new StdioClientTransport({
                     command: config.command,
                     args: config.args,
+                    cwd: this.rootPath,
                 });
+                transport.onerror = (error) => {
+                    this.logger.error(`Transport error for MCP server ${config.name}: ${error}`);
+                };
+
+                this.logger.info(`Building client for MCP server: ${config.name}`);
 
                 const client = new Client(
-                    { name: `client-for-${config.name}`, version: "1.0.0" },
-                    { capabilities: {} }
+                    { name: `client-for-${config.name}`, version: "1.0.0" }
                 );
+                this.logger.info(`Connecting client to MCP server: ${config.name}`);
 
                 await client.connect(transport);
+                this.logger.info(`Connected to MCP server: ${config.name}`);
                 this.sessions.set(config.name, client);
-                this.logger.info(`Connected to ${config.name}`);
+                this.logger.info(`Successfully connected to MCP server: ${config.name}`);
             } catch (error) {
-                this.logger.error(`Failed to connect to ${config.name}: ${error}`);
+                this.logger.error(`Failed to connect to MCP server ${config.name}: ${error}`);
             }
         }
     }
@@ -64,14 +79,20 @@ export class MultiMCPClient {
     async getAllTools() {
         const allTools = [];
         for (const [name, session] of this.sessions) {
-            const response = await session.listTools();
-            // Prefix tool names to prevent collisions between servers
-            const tools = response.tools.map(tool => ({
-                ...tool,
-                name: `${name}_${tool.name}`
-            }));
-            allTools.push(...tools);
+            try {
+                const response = await session.listTools();
+                // Prefix tool names to prevent collisions between servers
+                const tools = response.tools.map(tool => ({
+                    ...tool,
+                    name: `${name}_${tool.name}`
+                }));
+                this.logger.info(`Retrieved ${tools.length} tools from MCP server: ${name}`);
+                allTools.push(...tools);
+            } catch (error) {
+                this.logger.error(`Failed to list tools for MCP server ${name}: ${error}`);
+            }
         }
+        this.logger.info(`Total MCP tools available: ${allTools.length}`);
         return allTools;
     }
 
@@ -79,19 +100,35 @@ export class MultiMCPClient {
         const [serverName, ...toolNameParts] = prefixedName.split("_");
         const toolName = toolNameParts.join("_");
         if (serverName == undefined) {
+            this.logger.error(`Tool call failed: Server name not found in ${prefixedName}`);
             throw new Error(`Server ${serverName} not found`);
         }
         const session = this.sessions.get(serverName);
         if (!session) {
+            this.logger.error(`Tool call failed: Session for server ${serverName} not created`);
             throw new Error(`Session for ${serverName} not created`);
         }
-        return await session.callTool({ name: toolName, arguments: args });
+        
+        this.logger.info(`Calling tool ${toolName} on MCP server ${serverName} with args: ${JSON.stringify(args)}`);
+        try {
+            const result = await session.callTool({ name: toolName, arguments: args });
+            this.logger.info(`Tool ${toolName} on server ${serverName} executed successfully`);
+            return result;
+        } catch (error) {
+            this.logger.error(`Error calling tool ${toolName} on server ${serverName}: ${error}`);
+            throw error;
+        }
     }
 
     async shutdown() {
+        this.logger.info(`Shutting down MultiMCPClient, closing ${this.sessions.size} sessions...`);
         for (const [name, session] of this.sessions) {
-            await session.close();
-            console.log(`Closed connection to ${name}`);
+            try {
+                await session.close();
+                this.logger.info(`Closed connection to MCP server: ${name}`);
+            } catch (error) {
+                this.logger.error(`Error closing connection to MCP server ${name}: ${error}`);
+            }
         }
     }
 

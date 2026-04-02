@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "rm -rf frontend/public && npx vite build && npx tsx src/index.ts",
+    "start": "./start.sh",
     "build": "tsc",
     "dev": "npm run start",
     "photo": "npx tsx src/cli-tools/Photo.ts",

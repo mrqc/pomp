@@ -1,0 +1,3 @@
+[submodule "3rd-party/mcp-whatsapp-web"]
+	path = 3rd-party/mcp-whatsapp-web
+	url = https://github.com/mario-andreschak/mcp-whatsapp-web.git
