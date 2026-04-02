@@ -7,8 +7,8 @@
     "start": "rm -rf frontend/public && npx vite build && npx tsx src/index.ts",
     "build": "tsc",
     "dev": "npm run start",
-    "photo": "npx tsx src/tools/Photo.ts",
-    "whatsapp": "npx tsx src/tools/WhatsApp.ts"
+    "photo": "npx tsx src/cli-tools/Photo.ts",
+    "whatsapp": "npx tsx src/cli-tools/WhatsApp.ts"
   },
   "pi": {
     "extensions": [
@@ -47,6 +47,7 @@
     "@mariozechner/pi-agent-core": "^0.52.12",
     "@mariozechner/pi-ai": "^0.52.12",
     "@mariozechner/pi-coding-agent": "^0.52.12",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node-wav": "^0.0.4",
     "buffer": "^6.0.3",
     "chokidar": "^5.0.0",

@@ -12,6 +12,7 @@ import {ClientServerSynchronizationService} from "./services/ClientServerSynchro
 import {DatabaseConnectorService} from "./services/DatabaseConnectorService.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
+import {MultiMCPClient} from "./mcp/client/MultiMCPClient.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,8 @@ logger.info("Starting speech to text")
 let speechToText: SpeechToTextController = new SpeechToTextController(agentsController);
 logger.info("Starting audio recording")
 let audioRecording: AudioRecordingController = new AudioRecordingController(audioMutex, speechToText, textToSpeech, audioPlaying);
+logger.info("Starting MCP Server")
+let multiMcpClient = MultiMCPClient.getInstance();
 
 logger.info("Starting environment...")
 
@@ -55,12 +58,15 @@ async function startup() {
     await clientServerSynchronization.init();
     logger.info("Speech to text initializing");
     await speechToText.init();
+    logger.info("MCP Server initialization")
+    await multiMcpClient.connectAll();
     audioRecording.startRecording();
     textToSpeech.say("Hello!");
 }
 
-function gracefulShutdown(signal: string) {
+async function gracefulShutdown(signal: string) {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
+    await multiMcpClient.shutdown();
     AudioRecordingController.cleanup();
     SpeechToTextController.cleanup();
     TextToSpeechController.cleanup();
