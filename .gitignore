@@ -6,7 +6,7 @@
 frontend/public/
 
 # node modules
-node_modules/
+**/node_modules/
 
 # IDE stuff
 .idea/*

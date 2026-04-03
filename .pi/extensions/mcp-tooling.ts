@@ -13,6 +13,10 @@ type MCPToolDetails = {
 type ContentElement = {
     type: "text";
     text: string;
+} | {
+    type: "image";
+    data: string;
+    mimeType: string;
 };
 
 export default async function mcpTooling (pi: ExtensionAPI) {
@@ -30,7 +34,7 @@ export default async function mcpTooling (pi: ExtensionAPI) {
                 toolCallId: string,
                 params: any,
                 signal: AbortSignal | undefined,
-                onUpdate: ((partialResult: { content: Array<{ type: "text"; text: string; }>; details: MCPToolDetails; }) => void) | undefined,
+                onUpdate: ((partialResult: { content: ContentElement[]; details: MCPToolDetails; }) => void) | undefined,
                 ctx: ExtensionContext
             ): Promise<{ 
                 content: ContentElement[]; 
@@ -44,10 +48,24 @@ export default async function mcpTooling (pi: ExtensionAPI) {
                     let { content } = await multiMcpClient.callTool(aTool.name, params);
                     let contentToReturn: ContentElement[] = [];
                     for (let aContent of (content as any[])) {
-                        contentToReturn.push({
-                            text: aContent.text ?? "", 
-                            type: "text"
-                        })
+                        if (aContent.type === "text") {
+                            contentToReturn.push({
+                                type: "text",
+                                text: aContent.text ?? ""
+                            });
+                        } else if (aContent.type === "image") {
+                            contentToReturn.push({
+                                type: "image",
+                                data: aContent.data,
+                                mimeType: aContent.mimeType
+                            });
+                        } else {
+                            logger.error(`Unsupported MCP content type: ${aContent.type}`);
+                            contentToReturn.push({
+                                type: "text",
+                                text: `[Unsupported content type: ${aContent.type}]`
+                            });
+                        }
                     }
                     let details = {
                         processed: toolCallId,
