@@ -6,12 +6,10 @@ import {fileURLToPath} from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 
-const MCPToolSchema = Type.Object({
-    input: Type.String({ description: "Input text to process" }),
-    option: Type.Optional(Type.String({ description: "Optional parameter" })),
-});
-type MCPToolParams = Static<typeof MCPToolSchema>;
-type MCPToolDetails = { processed: string; timestamp: number };
+type MCPToolDetails = { 
+    processed: string; 
+    timestamp: number 
+};
 type ContentElement = {
     type: "text";
     text: string;
@@ -27,23 +25,23 @@ export default async function mcpTooling (pi: ExtensionAPI) {
             description: aTool.description ?? "",
             label: aTool.title ?? "",
             name: aTool.name,
-            parameters: MCPToolSchema,
+            parameters: aTool.inputSchema,
             async execute(
                 toolCallId: string,
-                params: MCPToolParams,
+                params: any,
                 signal: AbortSignal | undefined,
                 onUpdate: ((partialResult: { content: Array<{ type: "text"; text: string; }>; details: MCPToolDetails; }) => void) | undefined,
                 ctx: ExtensionContext
             ): Promise<{ 
                 content: ContentElement[]; 
-                details: MCPToolDetails; 
+                details: MCPToolDetails;
             }> {
                 logger.info(`Calling MCP tool ${aTool.name} (ID: ${toolCallId}) with params: ${JSON.stringify(params)}`);
                 if (signal?.aborted) {
                     throw new Error("Operation aborted");
                 }
                 try {
-                    let { content } = (await multiMcpClient.callTool(toolCallId, params)) as any;
+                    let { content } = await multiMcpClient.callTool(aTool.name, params);
                     let contentToReturn: ContentElement[] = [];
                     for (let aContent of (content as any[])) {
                         contentToReturn.push({

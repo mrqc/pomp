@@ -30,10 +30,8 @@ export class MultiMCPClient {
                 for (const [name, config] of Object.entries(data.mcpServers)) {
                     const serverConfig = config as any;
                     this.configs.push({
-                        name: name,
-                        command: serverConfig.command,
-                        args: serverConfig.args,
-                        description: serverConfig.description,
+                        name,
+                        ...serverConfig
                     });
                 }
                 this.logger.info(`Loaded ${this.configs.length} MCP server configurations`);
@@ -50,8 +48,7 @@ export class MultiMCPClient {
             try {
                 this.logger.info("CWD: " + this.rootPath);
                 const transport = new StdioClientTransport({
-                    command: config.command,
-                    args: config.args,
+                    ...config,
                     cwd: this.rootPath,
                 });
                 transport.onerror = (error) => {
@@ -94,9 +91,9 @@ export class MultiMCPClient {
         this.logger.info(`Total MCP tools available: ${allTools.length}: ${JSON.stringify(allTools)}`);
         return allTools;
     }
-
-    async callTool(prefixedName: string, args: any) {
-        this.logger.info("prefixedName: " + prefixedName + " " + JSON.stringify(args));
+ 
+    async callTool(prefixedName: string, input: any) {
+        this.logger.info("prefixedName: " + prefixedName + " " + JSON.stringify(input));
         const [serverName, ...toolNameParts] = prefixedName.split("_");
         const toolName = toolNameParts.join("_");
         if (serverName == undefined) {
@@ -109,9 +106,14 @@ export class MultiMCPClient {
             throw new Error(`Session for ${serverName} not created`);
         }
         
-        this.logger.info(`Calling tool ${toolName} on MCP server ${serverName} with args: ${JSON.stringify(args)}`);
+        this.logger.info(`Calling tool ${toolName} on MCP server ${serverName} with args: ${JSON.stringify(input)}`);
         try {
-            const result = await session.callTool({ name: toolName, arguments: args });
+            const result = await session.callTool(
+                { 
+                    name: toolName, 
+                    arguments: input
+                },
+                undefined);
             this.logger.info(`Tool ${toolName} on server ${serverName} executed successfully`);
             return result;
         } catch (error) {
