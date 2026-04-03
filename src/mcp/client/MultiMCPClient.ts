@@ -112,8 +112,7 @@ export class MultiMCPClient {
                 { 
                     name: toolName, 
                     arguments: input
-                },
-                undefined);
+                });
             this.logger.info(`Tool ${toolName} on server ${serverName} executed successfully`);
             return result;
         } catch (error) {
