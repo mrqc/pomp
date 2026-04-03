@@ -53,6 +53,7 @@ export default async function mcpTooling (pi: ExtensionAPI) {
                         processed: toolCallId,
                         timestamp: Date.now()
                     } as MCPToolDetails;
+                    logger.info("Content of result: " + JSON.stringify(contentToReturn));
                     logger.info(`MCP tool ${aTool.name} (ID: ${toolCallId}) executed successfully. Returned ${contentToReturn.length} content elements.`);
                     return {
                         content: contentToReturn,

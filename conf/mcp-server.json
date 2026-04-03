@@ -9,6 +9,11 @@
       "command": "npx",
       "args": ["-y", "@dangahagan/weather-mcp@latest"],
       "description": "Provides weather information for specified locations"
+    },
+    "whatsapp": {
+      "command": "node",
+      "args": ["./3rd-party/mcp-whatsapp-web/dist/index.js"],
+      "description": "Communication with WhatsApp Web for sending messages and media"
     }
   }
 }
