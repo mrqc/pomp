@@ -2,18 +2,17 @@ import {DeepstreamClient} from "@deepstream/client";
 
 export class ClientServerSynchronization {
     client = new DeepstreamClient('localhost:6020');
-    static singleton;
     
     async init() {
         await this.client.login();
     }
     
     static async getInstance() {
-        if ( !ClientServerSynchronization.singleton) {
-            ClientServerSynchronization.singleton = new ClientServerSynchronization();
-            await ClientServerSynchronization.singleton.init();
+        if (!globalThis.clientServerSynchronizationInstance) {
+            globalThis.clientServerSynchronizationInstance = new ClientServerSynchronization();
+            await globalThis.clientServerSynchronizationInstance.init();
         }
-        return ClientServerSynchronization.singleton;
+        return globalThis.clientServerSynchronizationInstance;
     }
     
     getRecord(recordName) {

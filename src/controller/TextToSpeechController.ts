@@ -49,8 +49,8 @@ export class TextToSpeechController {
     private async loadConfigsAndSubscribe() {
         TextToSpeechController.textSpeed = await this.databaseConnector.getFloatConfig("TextToSpeech", "textSpeed");
         TextToSpeechController.modelId = await this.databaseConnector.getStringConfig("TextToSpeech", "modelId");
-        this.clientServerSynchronization.setRecord("TextToSpeech", "textSpeed", TextToSpeechController.textSpeed);
-        this.clientServerSynchronization.setRecord("TextToSpeech", "modelId", TextToSpeechController.modelId);
+        await this.clientServerSynchronization.setRecord("TextToSpeech", "textSpeed", TextToSpeechController.textSpeed);
+        await this.clientServerSynchronization.setRecord("TextToSpeech", "modelId", TextToSpeechController.modelId);
         this.clientServerSynchronization.subscribeOnRecordVariable("TextToSpeech", "textSpeed", async (value: any) => {
             await this.databaseConnector.setConfig("TextToSpeech", "textSpeed", value);
             TextToSpeechController.textSpeed = await this.databaseConnector.getFloatConfig("TextToSpeech", "textSpeed");

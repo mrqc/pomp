@@ -36,8 +36,28 @@ export class SessionPanel extends LitElement {
 
         .message {
             padding: 10px;
-            background-color: #2a2a2a;
             border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .message:hover {
+            filter: brightness(1.2);
+        }
+
+        .message-type-0 /*USER_TEXT_INPUT*/{
+            background-color: #2a2a2a;
+        }
+
+        .message-type-1 /*ASSISTANT*/ {
+            background-color: #23262b;
+        }
+
+        .message-type-2 /*USER_ACTION_FEEDBACK*/ {
+            background-color: #212d09
+        }
+
+        .message-type-3 /*EVENT*/ {
+            background-color: #10112d;
         }
 
         .message-timestamp {
@@ -131,9 +151,10 @@ export class SessionPanel extends LitElement {
     updateWorkspace(value) {
         this.workspace = value;
         this.requestUpdate();
-        setTimeout(() => {
-            this.shadowRoot.addEventListener('click', (e) => this.handleAction(e));
-        }, 300)
+    }
+
+    firstUpdated() {
+        this.shadowRoot.addEventListener('click', (e) => this.handleAction(e));
     }
 
     updated(changedProperties) {
@@ -231,6 +252,12 @@ export class SessionPanel extends LitElement {
         }
     }
 
+    handleMessageClick(message) {
+        if (message.workspace) {
+            this.updateWorkspace(message.workspace);
+        }
+    }
+
     render() {
         if (!this.session) {
             return html`No session`;
@@ -241,7 +268,7 @@ export class SessionPanel extends LitElement {
             </div>
             <div id="content-container">
                 ${repeat(this.messages, (m) => m.id || m.timestamp, (message) => html`
-                    <div class="message">
+                    <div class="message message-type-${message.type}" @click="${() => this.handleMessageClick(message)}">
                         <div class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString()}</div>
                         <div class="message-text">${message.text}</div>
                     </div>

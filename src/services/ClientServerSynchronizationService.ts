@@ -11,8 +11,6 @@ const __dirname = path.dirname(__filename);
 
 export class ClientServerSynchronizationService {
 
-    private static instance: ClientServerSynchronizationService;
-
     private server = new Deepstream();
     private client = new DeepstreamClient("localhost:6020")
     private static logger = new InternalLogger(__filename);
@@ -21,31 +19,39 @@ export class ClientServerSynchronizationService {
         ClientServerSynchronizationService.logger.info("Starting stream server...");
         this.server.start();
     }
-    
+
     public static getInstance(): ClientServerSynchronizationService {
-        if (!ClientServerSynchronizationService.instance) {
-            ClientServerSynchronizationService.instance = new ClientServerSynchronizationService();
+        if (!(globalThis as any).clientServerSynchronizationServiceInstance) {
+            (globalThis as any).clientServerSynchronizationServiceInstance = new ClientServerSynchronizationService();
         }
-        return ClientServerSynchronizationService.instance;
+        return (globalThis as any).clientServerSynchronizationServiceInstance;
     }
 
     async init() {
         await this.client.login()
     }
-    
-    setRecord(recordName: string, variableName: string, value: any) {
-        try {
-            let record = this.client.record.getRecord(recordName);
-            record.whenReady((record) => {
-                ClientServerSynchronizationService.logger.info("Setting value '" + JSON.stringify(value) + "' for variable " + variableName + " on record " + recordName)
-                record.set(variableName, value);
-                ClientServerSynchronizationService.logger.info("Value '" + JSON.stringify(record.get(variableName)) + "' for variable " + variableName + " set on record " + recordName)
-            });
-        } catch (error) {
-            ClientServerSynchronizationService.logger.error("Error setting value '" + value + "' for variable " + variableName + " on record " + recordName + ": " + error)
-        }
+
+    async setRecord(recordName: string, variableName: string, value: any): Promise<void> {
+        return new Promise((resolve, reject) => {
+            try {
+                let record = this.client.record.getRecord(recordName);
+                record.whenReady((record) => {
+                    try {
+                        ClientServerSynchronizationService.logger.info("Setting value '" + JSON.stringify(value) + "' for variable " + variableName + " on record " + recordName)
+                        record.set(variableName, value);
+                        ClientServerSynchronizationService.logger.info("Value '" + JSON.stringify(record.get(variableName)) + "' for variable " + variableName + " set on record " + recordName)
+                        resolve();
+                    } catch (e) {
+                        ClientServerSynchronizationService.logger.error("Error inside whenReady for record " + recordName + ": " + e);
+                        reject(e);
+                    }
+                });
+            } catch (error) {
+                ClientServerSynchronizationService.logger.error("Error setting value '" + value + "' for variable " + variableName + " on record " + recordName + ": " + error)
+                reject(error);
+            }
+        });
     }
-    
     subscribeOnRecordVariable(recordName: string, variableName: string, callback: (value: any) => void) {
         try {
             let record = this.client.record.getRecord(recordName);

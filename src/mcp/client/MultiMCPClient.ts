@@ -18,7 +18,6 @@ export class MultiMCPClient {
     private readonly sessions: Map<string, Client> = new Map();
     private readonly configs: ServerConfig[] = [];
     private readonly logger = new InternalLogger(__filename);
-    private static instance: MultiMCPClient;
     public rootPath: string = "";
 
     constructor() {
@@ -86,17 +85,18 @@ export class MultiMCPClient {
                     ...tool,
                     name: `${name}_${tool.name}`
                 }));
-                this.logger.info(`Retrieved ${tools.length} tools from MCP server: ${name}`);
+                this.logger.info(`Retrieved ${tools.length} tools from MCP server: ${name}: ${JSON.stringify(tools)}`);
                 allTools.push(...tools);
             } catch (error) {
                 this.logger.error(`Failed to list tools for MCP server ${name}: ${error}`);
             }
         }
-        this.logger.info(`Total MCP tools available: ${allTools.length}`);
+        this.logger.info(`Total MCP tools available: ${allTools.length}: ${JSON.stringify(allTools)}`);
         return allTools;
     }
 
     async callTool(prefixedName: string, args: any) {
+        this.logger.info("prefixedName: " + prefixedName + " " + JSON.stringify(args));
         const [serverName, ...toolNameParts] = prefixedName.split("_");
         const toolName = toolNameParts.join("_");
         if (serverName == undefined) {

@@ -7,7 +7,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class DatabaseConnectorService {
-    private static instance: DatabaseConnectorService;
     private logger = new InternalLogger(__filename);
     private database = new sqlite3.Database('./database.sqlite', (error: Error | null) => {
         if (error) {
@@ -393,9 +392,9 @@ export class DatabaseConnectorService {
     }
 
     static getInstance() {
-        if (!DatabaseConnectorService.instance) {
-            DatabaseConnectorService.instance = new DatabaseConnectorService();
+        if (!(globalThis as any).databaseConnectorServiceInstance) {
+            (globalThis as any).databaseConnectorServiceInstance = new DatabaseConnectorService();
         }
-        return DatabaseConnectorService.instance;
+        return (globalThis as any).databaseConnectorServiceInstance;
     }
 }

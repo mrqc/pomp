@@ -4,7 +4,7 @@ import type {Logger} from "nodejs-whisper/dist/types";
 import fs from "fs-extra";
 import path from "node:path";
 import {fileURLToPath} from "url";
-import {type AgentsController, AgentSessionMessageType, InternalAgentSessionType} from "./AgentsController.ts";
+import {type AgentsController, AgentSessionMessageType} from "./AgentsController.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 
@@ -46,11 +46,11 @@ export class SpeechToTextController {
         SpeechToTextController.modelName = await this.databaseConnector.getStringConfig("SpeechToText", "modelName");
         SpeechToTextController.translateToEnglish = await this.databaseConnector.getBooleanConfig("SpeechToText", "translateToEnglish");
         SpeechToTextController.splitOnWord = await this.databaseConnector.getBooleanConfig("SpeechToText", "splitOnWord");
-        this.clientServerSynchronization.setRecord("SpeechToText", "secondsToLooseText", SpeechToTextController.secondsToLooseText);
-        this.clientServerSynchronization.setRecord("SpeechToText", "activationKeywords", SpeechToTextController.activationKeywords.join(", "));
-        this.clientServerSynchronization.setRecord("SpeechToText", "modelName", SpeechToTextController.modelName);
-        this.clientServerSynchronization.setRecord("SpeechToText", "translateToEnglish", SpeechToTextController.translateToEnglish);
-        this.clientServerSynchronization.setRecord("SpeechToText", "splitOnWord", SpeechToTextController.splitOnWord);
+        await this.clientServerSynchronization.setRecord("SpeechToText", "secondsToLooseText", SpeechToTextController.secondsToLooseText);
+        await this.clientServerSynchronization.setRecord("SpeechToText", "activationKeywords", SpeechToTextController.activationKeywords.join(", "));
+        await this.clientServerSynchronization.setRecord("SpeechToText", "modelName", SpeechToTextController.modelName);
+        await this.clientServerSynchronization.setRecord("SpeechToText", "translateToEnglish", SpeechToTextController.translateToEnglish);
+        await this.clientServerSynchronization.setRecord("SpeechToText", "splitOnWord", SpeechToTextController.splitOnWord);
         this.clientServerSynchronization.subscribeOnRecordVariable("SpeechToText", "secondsToLooseText", async (value: any) => {
             await this.databaseConnector.setConfig("SpeechToText", "secondsToLooseText", value);
             SpeechToTextController.secondsToLooseText = await this.databaseConnector.getIntegerConfig("SpeechToText", "secondsToLooseText");
@@ -110,14 +110,14 @@ export class SpeechToTextController {
     private async transformIntermediaryOutputToPhrases(outputFileName: string) {
         try {
             let text = await this.putTextIntoPhrases(outputFileName);
-            this.clientServerSynchronization.setRecord("SpeechContext", "text", this.getCurrentStreamText());
+            await this.clientServerSynchronization.setRecord("SpeechContext", "text", this.getCurrentStreamText());
             this.logger.info("transformation process length: " + text.length + " isActive " + this.isActive())
             if (this.currentStreamTextContainsActivationKeyword()) {
                 this.setActive();
                 this.logger.info("Activation via keyword in context window")
                 let currentContextWindow = this.getCurrentStreamText();
                 this.phrases = []
-                await this.agentsController.prompt(currentContextWindow, AgentSessionMessageType.USER_INPUT, this.currentSessionId, InternalAgentSessionType.USER_VOICE_INITIATED);
+                await this.agentsController.prompt(currentContextWindow, AgentSessionMessageType.USER_TEXT_INPUT, this.currentSessionId);
             } else if ( !this.isActive()) {
                 this.logger.info("Cleaning up context window")
                 this.removeOutdatedPhrasesFromContextWindow();
