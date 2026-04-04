@@ -270,6 +270,7 @@ export class SessionPanel extends LitElement {
                 ${repeat(this.messages, (m) => m.id || m.timestamp, (message) => html`
                     <div class="message message-type-${message.type}" @click="${() => this.handleMessageClick(message)}">
                         <div class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString()}</div>
+                        ${message.data ? html`<img src="" style="max-width: 100%; height: auto; margin-bottom: 8px; border-radius: 4px;" />` : html``}
                         <div class="message-text">${message.text}</div>
                     </div>
                 `)}

@@ -147,7 +147,11 @@ export class AgentsController {
             this.modelRegistryMutex.release();
         }
     }
-    private addMessageToSession(text: string, workspace: string | null, internalSession: InternalAgentSessionProvisioning, type: AgentSessionMessageType) {
+    
+    private addMessageToSession(text: string, 
+                                workspace: string | null,
+                                internalSession: InternalAgentSessionProvisioning, 
+                                type: AgentSessionMessageType) {
         let newMessage = {
             id: uuidv7().toString(),
             text: text,
@@ -189,18 +193,23 @@ export class AgentsController {
                     }
                 }
                 let relevantMessages = lastUserMessageIndex == -1 ? event.messages : event.messages.slice(lastUserMessageIndex + 1);
-                let assistantMessages = relevantMessages.filter((message: any) => message.role == "assistant");
+                let contentIntentionText = null;
+                let assistantMessages = relevantMessages.filter((message: any) => ["assistant", "toolResult"].includes(message.role));
                 let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
-                let contentIntentionText = null;
                 if (intentionContext.contentIntention !== undefined) {
                     internalSession.workspace = intentionContext.contentIntention.text;
                     contentIntentionText = intentionContext.contentIntention.text;
-                    this.clientServerSynchronization.setRecord("session-" + internalSession.id, "workspace", intentionContext.contentIntention.text)
+                    this.clientServerSynchronization.setRecord("session-" + internalSession.id, "workspace", intentionContext.contentIntention.text);
                 }
-                if (intentionContext.speakIntention !== undefined) {
+
+                if (intentionContext.speakIntention !== undefined && intentionContext.speakIntention.text.trim() !== "") {
                     this.textToSpeech.say(intentionContext.speakIntention.text);
-                    this.addMessageToSession(intentionContext.speakIntention.text, contentIntentionText, internalSession, AgentSessionMessageType.ASSISTANT);
+                    this.addMessageToSession(
+                        intentionContext.speakIntention.text, 
+                        contentIntentionText,
+                        internalSession, 
+                        AgentSessionMessageType.ASSISTANT);
                 }
             }
         });

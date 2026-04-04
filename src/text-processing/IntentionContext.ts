@@ -4,6 +4,9 @@ import type {TextContent} from "@mariozechner/pi-ai/dist/types";
 import {InternalLogger} from "../LogConfig.ts";
 import {fileURLToPath} from "url";
 import path from "path";
+import {AgentSessionMessageType} from "../controller/AgentsController.ts";
+import type {ImageContent} from "@mariozechner/pi-ai";
+import type {Image} from "./Image.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,38 +19,68 @@ export interface IntentionContext {
     text: string
 }
 
+interface ExtractedData {
+    elements: ({
+        type: "text",
+        text: string
+    } | {
+        type: "image",
+        data: string,
+        mimeType: string
+    })[]
+}
 export class IntentionContextService {
-    private logger = new InternalLogger(__filename);
+    private readonly logger = new InternalLogger(__filename);
 
     public getIntentionContext(messages: AgentMessage[]): IntentionContext {
-        let overallResponseContent = this.extractTextFromResponse(messages);
-        let intentions = this.getIntentions(overallResponseContent);
-        let speakIntention = this.getIntentionContent(intentions, "SPEAK")
-        let contentIntention = this.getIntentionContent(intentions, "CONTENT")
-        let waitIntention = this.getIntentionContent(intentions, "WAIT")
-        let goIntention = this.getIntentionContent(intentions, "GO")
-        overallResponseContent = this.removeIntentionContents(overallResponseContent);
+        let overallResponseContent = this.extractTextAndImagesFromResponse(messages);
+        let resolvedTextContent = this.resolveImagesToIntentionTags(overallResponseContent);
+        let intentions = this.getIntentions(resolvedTextContent);
+        let speakIntention = this.getIntentionContent(intentions, "SPEAK");
+        let contentIntention = this.getIntentionContent(intentions, "CONTENT");
+        let waitIntention = this.getIntentionContent(intentions, "WAIT");
+        let goIntention = this.getIntentionContent(intentions, "GO");
+        let overallTextResponseContent = this.removeIntentionContents(resolvedTextContent);
         return {
             speakIntention: speakIntention,
             contentIntention: contentIntention,
             waitIntention: waitIntention,
             goIntention: goIntention,
-            text: overallResponseContent
+            text: overallTextResponseContent
         }
     }
+    
+    private resolveImagesToIntentionTags(overallResponseContent: ExtractedData) {
+        return "";
+    }
 
-    private extractTextFromResponse(messages: AgentMessage[]) {
-        var textToSay: string = "";
+    private extractTextAndImagesFromResponse(messages: AgentMessage[]) {
+        let contentToReturn: ExtractedData = {
+            elements: []
+        }
         for (let message of messages) {
             this.logger.info("Message: " + JSON.stringify(message))
             if ("content" in message && Array.isArray(message.content)) {
-                let contents = message.content.filter((content: { type: string; }) => content.type == "text");
-                for (let content of contents) {
-                    textToSay += (content as TextContent).text + " ";
+                let contents = message.content.filter((content: { type: string; }) => 
+                    ["text", "image"].includes(content.type)
+                );
+                for (let aContent of contents) {
+                    if (aContent.type == "text") {
+                        contentToReturn.elements.push({
+                            type: "text",
+                            text: aContent.text
+                        });
+                    } else if (aContent.type == "image") {
+                        contentToReturn.elements.push({
+                            type: "image",
+                            data: aContent.data,
+                            mimeType: aContent.mimeType
+                        });
+                    }
                 }
             }
         }
-        return textToSay;
+        return contentToReturn;
     }
     
     private getIntentions(content: string): Intention[] {
@@ -61,7 +94,7 @@ export class IntentionContextService {
 
 
     private getIntentionContent(intentions: Intention[], intentionName: string): Intention {
-        let intention = intentions.filter((anIntention) => anIntention.tagName == intentionName)[0];
+        let intention = intentions.find((anIntention) => anIntention.tagName == intentionName);
         if (intention == undefined) {
             return {
                 tagName: intentionName,
@@ -71,7 +104,7 @@ export class IntentionContextService {
         return intention
     }
 
-    private removeIntentionContents(textToSay: string) {
-        return textToSay.replace(/\[([a-zA-Z0-9_-]+)]([\s\S]*?)\[\/\1]/g, "");
+    private removeIntentionContents(text: string) {
+        return text.replaceAll(/\[([a-zA-Z0-9_-]+)]([\s\S]*?)\[\/\1]/g, "");
     }
 }
