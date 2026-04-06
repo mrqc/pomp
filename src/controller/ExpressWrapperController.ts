@@ -1,6 +1,6 @@
 import express, {type Request, type Response} from "express";
 import {InternalLogger} from "../LogConfig.ts";
-import {fileURLToPath} from "url";
+import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {Configuration} from "../Configuration.ts";
 
@@ -9,9 +9,9 @@ const __dirname = path.dirname(__filename);
 
 export class ExpressWrapperController {
     private port = 4000;
-    private app = express();
-    private logger = new InternalLogger(__filename);
-    private configuration: Configuration;
+    private readonly app = express();
+    private readonly logger = new InternalLogger(__filename);
+    private readonly configuration: Configuration;
 
     constructor(configuration: Configuration) {
         this.configuration = configuration;

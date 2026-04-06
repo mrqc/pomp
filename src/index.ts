@@ -67,10 +67,12 @@ async function startup() {
 async function gracefulShutdown(signal: string) {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
     await multiMcpClient.shutdown();
+    audioRecording.stopAndCleanupAudioDevice();
     AudioRecordingController.cleanup();
     SpeechToTextController.cleanup();
     TextToSpeechController.cleanup();
     databaseConnector.close();
+    audioPlaying.close();
     Tools.cleanup();
     process.exit(0);
 }

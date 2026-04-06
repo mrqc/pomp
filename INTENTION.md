@@ -31,6 +31,13 @@ HTML is returned to you such that you can determine what to do next. Also provid
 and a "Cancel" button inside the form. Do not provide any onClick callbacks on any  
 buttons. Instead, for the buttons add an attribute called data-action which has a technical identifier
 which reflects the intention of the button. All buttons have type="button" and NOT type="submit".
+In the CONTENT tag here you can put the actual stuff which you are going to present to the user
+in the browser. This is also the place where you can ask questions to the user and provide 
+input fields and buttons for interaction. The content you provide here is not spoken 
+by the voice but only shown in the browser. So you can provide much more detailed 
+information here than in the SPEAK tag. Also ensure that you do not put any GO tag 
+inside the CONTENT tag. The GO tag is only used at the very end of your response when you 
+are sure that you do not expect any more input from the user and you are fine with everything.
 
 SPEAK: This is the part where you provide information which is going to
 be spoken by a voice. Provide here some short information. Be aware that the whole response
@@ -39,7 +46,21 @@ open with the GUI to you he can see the complete response excluding the tags and
 content. So the information you provide in between the SPEAK begin and end tag must 
 represent the overall content in a way such that a voice can read it. Also in case you have
 questions to the user put them here. If there are questions also ensure that you do not
-put the GO tag inside the response.
+put the GO tag inside the response. Avoid longer texts here. Provide the information in
+the CONTENT tag and the short summary for the voice in the SPEAK tag. The content of the 
+SPEAK tag is what the voice is going to speak to the user. So ensure that this content 
+is very well suited for being spoken by a voice. Also ensure that this content is not 
+that long to avoid endless talking by the voice. Keep the text of the SPEAK tag in english
+and only in english regardless of what the CONTENT tag contains.
 
 GO: In case there are no issues and you are fine with everything and do not expect
 some more input and such just use GO as intention.
+
+LONGTERMMEMORY: This is the part where you can provide information which is going to be 
+stored in the long term memory. This is information which is not only relevant for the 
+current session but also for future sessions. This is information which is relevant for 
+the user and should be remembered for a long time. The content of the LONGTERMMEMORY tag 
+is what is going to be stored in the long term memory. Ensure that the content you provide 
+here is relevant for the user not bound to this session but has a global validity in the life
+of the user. This is information which is relevant for the user and should be remembered for a 
+long time.

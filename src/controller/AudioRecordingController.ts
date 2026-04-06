@@ -17,21 +17,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class AudioRecordingController {
-    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
-    private clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
+    private readonly databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
+    private readonly clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'recordings');
     private static sampleRate = 16000;
     public static defaultRecordingDuration = 0.25;
-    private logger = new InternalLogger(__filename);
-    private speechToText: SpeechToTextController;
-    private audioMutex: Mutex;
+    private readonly logger = new InternalLogger(__filename);
+    private readonly speechToText: SpeechToTextController;
+    private readonly audioMutex: Mutex;
     private audioDevice: IoStreamRead | null = null;
     private currentWavFileWriter: FileWriter | null = null;
-    private textToSpeech: TextToSpeechController | null = null;
+    private readonly textToSpeech: TextToSpeechController | null = null;
     private isRecording: boolean = false;
     private currentOutputFileName: string | null = null;
     public silentCount = 0;
-    private audioPlaying: AudioPlayingController;
+    private readonly audioPlaying: AudioPlayingController;
 
     constructor(audioMutex: Mutex, speechToText: SpeechToTextController, textToSpeech: TextToSpeechController, audioPlaying: AudioPlayingController) {
         AudioRecordingController.cleanup();

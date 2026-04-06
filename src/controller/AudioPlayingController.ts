@@ -1,9 +1,9 @@
 import chokidar from 'chokidar';
-import path from 'path';
+import path from 'node:path';
 import fs from 'fs-extra';
 import wavPlayer from 'node-wav-player';
 import type {Mutex} from "es-toolkit";
-import {fileURLToPath} from "url";
+import {fileURLToPath} from "node:url";
 import {InternalLogger} from "../LogConfig.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,11 +16,11 @@ interface AudioFile {
 
 export class AudioPlayingController {    
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'audio-outputs');
-    private audioMutex: Mutex;
-    private queue: AudioFile[] = [];
+    private readonly audioMutex: Mutex;
+    private readonly queue: AudioFile[] = [];
     public isPlaying: boolean = false;
     private watcher: any;
-    private logger = new InternalLogger(__filename);
+    private readonly logger = new InternalLogger(__filename);
 
     constructor(audioMutex: Mutex) {
         this.audioMutex = audioMutex;
@@ -61,8 +61,8 @@ export class AudioPlayingController {
     }
 
     private extractTimestamp(filename: string): number | null {
-        const match = filename.match(/^output-(\d+)\.wav$/);
-        return match && match[1] ? parseInt(match[1], 10) : null;
+        const match = new RegExp(/^output-(\d+)\.wav$/).exec(filename);
+        return match?.[1] ? Number.parseInt(match[1], 10) : null;
     }
 
     private async onFileAdded(filePath: string) {

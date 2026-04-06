@@ -5,7 +5,7 @@ import {InternalLogger} from "../../src/LogConfig.ts";
 export default function bashHook (pi: ExtensionAPI) {
     let logger = new InternalLogger(__filename)
     pi.on("tool_call", async (event, ctx) => {
-        logger.info("Trying to call bash tool");
+        logger.info("Trying to call tool");
         
         /*if (event.type == "tool_execution_start") {
             this.textToSpeech.say("Calling tool " + event.toolName + ".")

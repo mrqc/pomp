@@ -1,6 +1,6 @@
-import {type ExtensionAPI, type ExtensionContext} from "@mariozechner/pi-coding-agent";
+import {type AgentToolResult, type ExtensionAPI, type ExtensionContext} from "@mariozechner/pi-coding-agent";
 import {MultiMCPClient, multiMcpClient} from "../../src/mcp/client/MultiMCPClient.ts";
-import {type Static, Type} from "@mariozechner/pi-ai";
+import {type ImageContent, type Static, type TextContent, Type} from "@mariozechner/pi-ai";
 import {InternalLogger} from "../../src/LogConfig.ts";
 import {fileURLToPath} from "url";
 
@@ -8,15 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 
 type MCPToolDetails = { 
     processed: string; 
-    timestamp: number 
-};
-type ContentElement = {
-    type: "text";
-    text: string;
-} | {
-    type: "image";
-    data: string;
-    mimeType: string;
+    timestamp: number;
+    outputFilename: string;
 };
 
 export default async function mcpTooling (pi: ExtensionAPI) {
@@ -34,19 +27,16 @@ export default async function mcpTooling (pi: ExtensionAPI) {
                 toolCallId: string,
                 params: any,
                 signal: AbortSignal | undefined,
-                onUpdate: ((partialResult: { content: ContentElement[]; details: MCPToolDetails; }) => void) | undefined,
+                onUpdate: ((partialResult: { content: (ImageContent | TextContent)[]; details: MCPToolDetails; }) => void) | undefined,
                 ctx: ExtensionContext
-            ): Promise<{ 
-                content: ContentElement[]; 
-                details: MCPToolDetails;
-            }> {
+            ): Promise<AgentToolResult<MCPToolDetails>> {
                 logger.info(`Calling MCP tool ${aTool.name} (ID: ${toolCallId}) with params: ${JSON.stringify(params)}`);
                 if (signal?.aborted) {
                     throw new Error("Operation aborted");
                 }
                 try {
                     let { content } = await multiMcpClient.callTool(aTool.name, params);
-                    let contentToReturn: ContentElement[] = [];
+                    let contentToReturn: (ImageContent | TextContent)[] = [];
                     for (let aContent of (content as any[])) {
                         if (aContent.type === "text") {
                             contentToReturn.push({
@@ -67,15 +57,15 @@ export default async function mcpTooling (pi: ExtensionAPI) {
                             });
                         }
                     }
-                    let details = {
-                        processed: toolCallId,
-                        timestamp: Date.now()
-                    } as MCPToolDetails;
                     logger.info("Content of result: " + JSON.stringify(contentToReturn));
                     logger.info(`MCP tool ${aTool.name} (ID: ${toolCallId}) executed successfully. Returned ${contentToReturn.length} content elements.`);
                     return {
                         content: contentToReturn,
-                        details: details
+                        details: {
+                            processed: toolCallId,
+                            timestamp: Date.now(),
+                            outputFilename: toolCallId + "_" + Date.now()
+                        } as MCPToolDetails
                     };
                 } catch (error) {
                     logger.error(`Error executing MCP tool ${aTool.name} (ID: ${toolCallId}): ${error}`);

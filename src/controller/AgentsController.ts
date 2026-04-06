@@ -10,10 +10,11 @@ import {ClientServerSynchronizationService} from "../services/ClientServerSynchr
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 import {Mutex} from "es-toolkit";
 import {join} from "node:path";
-import {readFile} from "node:fs/promises";
+import {readFile, appendFile} from "node:fs/promises";
 import {IntentionContextService} from "../text-processing/IntentionContext.ts";
 import {LLMSessionsService} from "../services/LLMSessionsService.ts";
-import { jsonToPlainText } from "json-to-plain-text";
+import {access, constants, writeFile} from "node:fs";
+import {jsonToPlainText} from "json-to-plain-text";
 
 export enum AgentSessionMessageType {
     USER_TEXT_INPUT,
@@ -55,8 +56,13 @@ export class AgentsController {
     private readonly llmSessionsService = new LLMSessionsService();
     
     private async getFileContent(filename: string): Promise<string> {
-        const filepath = join(__dirname, "..", "..", filename);
-        return await readFile(filepath, "utf-8");
+        try {
+            const filepath = join(__dirname, "..", "..", filename);
+            return await readFile(filepath, "utf-8");
+        } catch (error) {
+            this.logger.error("Error while getting file: " + error);
+            return "";
+        }
     }
 
     constructor(textToSpeech: TextToSpeechController) {
@@ -211,6 +217,15 @@ export class AgentsController {
                         internalSession, 
                         AgentSessionMessageType.ASSISTANT);
                 }
+                
+                if (intentionContext.longTermMemoryIntention !== undefined && intentionContext.longTermMemoryIntention.text != "") {
+                    try {
+                        appendFile("./LONGTERMMEMORY.md", intentionContext.longTermMemoryIntention.text);
+                        console.log('File updated successfully.');
+                    } catch {
+                        console.log('Error writting to long term memory file.');
+                    }
+                }
             }
         });
         session.setSteeringMode("all");
@@ -218,6 +233,7 @@ export class AgentsController {
         await session.steer(await this.getFileContent("INTENTION.md"))
         await session.steer(await this.getFileContent("OWNER.md"))
         await session.steer(await this.getFileContent("SOUL.md"))
+        await session.steer("Here is context information which is maybe needed: " + (await this.getFileContent("LONGTERMMEMORY.md")))
         this.logger.info("Providing prompt " + text + " to session")
         return internalSession;
     }

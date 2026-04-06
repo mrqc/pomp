@@ -7,11 +7,17 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 
+interface ServerConfigEnvVariableDefinition {
+    [key: string]: string;
+}
+
 interface ServerConfig {
     name: string;
     command: string;
     args: string[];
     description: string;
+    env?: ServerConfigEnvVariableDefinition;
+    disabled?: boolean;
 }
 
 export class MultiMCPClient {
@@ -29,6 +35,9 @@ export class MultiMCPClient {
             if (data.mcpServers) {
                 for (const [name, config] of Object.entries(data.mcpServers)) {
                     const serverConfig = config as any;
+                    if (serverConfig.disabled) {
+                        continue;
+                    }
                     this.configs.push({
                         name,
                         ...serverConfig
@@ -50,6 +59,10 @@ export class MultiMCPClient {
                 const transport = new StdioClientTransport({
                     ...config,
                     cwd: this.rootPath,
+                    env: {
+                        ...process.env,
+                        ...config.env
+                    } as Record<string, string>
                 });
                 transport.onerror = (error) => {
                     this.logger.error(`Transport error for MCP server ${config.name}: ${error}`);
@@ -58,8 +71,10 @@ export class MultiMCPClient {
                 this.logger.info(`Building client for MCP server: ${config.name}`);
 
                 const client = new Client(
-                    { name: `client-for-${config.name}`, version: "1.0.0" }
-                );
+                    { 
+                        name: `client-for-${config.name}`, 
+                        version: "1.0.0" 
+                    });
                 this.logger.info(`Connecting client to MCP server: ${config.name}`);
 
                 await client.connect(transport);

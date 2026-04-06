@@ -16,18 +16,23 @@ export interface IntentionContext {
     contentIntention: Intention,
     waitIntention: Intention,
     goIntention: Intention,
+    longTermMemoryIntention: Intention,
     text: string
 }
 
+interface ExtractedTextElement {
+    type: "text",
+    text: string
+}
+
+interface ExtractedImageElement {
+    type: "image",
+    data: string,
+    mimeType: string
+}
+
 interface ExtractedData {
-    elements: ({
-        type: "text",
-        text: string
-    } | {
-        type: "image",
-        data: string,
-        mimeType: string
-    })[]
+    elements: (ExtractedTextElement | ExtractedImageElement)[]
 }
 export class IntentionContextService {
     private readonly logger = new InternalLogger(__filename);
@@ -35,23 +40,51 @@ export class IntentionContextService {
     public getIntentionContext(messages: AgentMessage[]): IntentionContext {
         let overallResponseContent = this.extractTextAndImagesFromResponse(messages);
         let resolvedTextContent = this.resolveImagesToIntentionTags(overallResponseContent);
+        this.logger.info("Resolved content: " + resolvedTextContent);
         let intentions = this.getIntentions(resolvedTextContent);
         let speakIntention = this.getIntentionContent(intentions, "SPEAK");
         let contentIntention = this.getIntentionContent(intentions, "CONTENT");
         let waitIntention = this.getIntentionContent(intentions, "WAIT");
         let goIntention = this.getIntentionContent(intentions, "GO");
+        let longTermMemoryIntention = this.getIntentionContent(intentions, "LONGTERMMEMORY");
+        
         let overallTextResponseContent = this.removeIntentionContents(resolvedTextContent);
         return {
             speakIntention: speakIntention,
             contentIntention: contentIntention,
             waitIntention: waitIntention,
             goIntention: goIntention,
+            longTermMemoryIntention: longTermMemoryIntention,
             text: overallTextResponseContent
         }
     }
     
-    private resolveImagesToIntentionTags(overallResponseContent: ExtractedData) {
-        return "";
+    private resolveImagesToIntentionTags(overallResponseContent: ExtractedData): string {
+        const elements = overallResponseContent.elements;
+        let imagesToConsolidate = "";
+
+        for (let i = 0; i < elements.length; i++) {
+            const element = elements[i];
+            this.logger.info("Processing element: " + JSON.stringify(element));
+            if (element == undefined) {
+                continue;
+            }
+            if (element.type === "text") {
+                if (element.text.includes("[/CONTENT]")) {
+                    element.text = element.text.replace("[/CONTENT]", imagesToConsolidate + "[/CONTENT]");
+                    imagesToConsolidate = "";
+                } else {
+                    element.text += imagesToConsolidate;
+                }
+            } else if (element.type === "image") {
+                imagesToConsolidate += `<img src="data:${element.mimeType};base64,${element.data}" />`;
+            }
+        }
+
+        return elements
+            .filter((element) => element.type === "text")
+            .map((element) => element.text)
+            .join(" ");
     }
 
     private extractTextAndImagesFromResponse(messages: AgentMessage[]) {
@@ -80,6 +113,7 @@ export class IntentionContextService {
                 }
             }
         }
+        this.logger.info("Content to return: " + JSON.stringify(contentToReturn));
         return contentToReturn;
     }
     

@@ -20,3 +20,16 @@ database.sqlite
 # whatsapp mcp
 logs
 whatsapp-sessions/
+3rd-party/whatsapp-mcp-ts/auth_info/
+3rd-party/whatsapp-mcp-ts/data
+.wwebjs_auth/
+.wwebjs_cache/
+mcp-logs.txt
+wa-logs.txt
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -3,7 +3,7 @@ import {nodewhisper} from "nodejs-whisper";
 import type {Logger} from "nodejs-whisper/dist/types";
 import fs from "fs-extra";
 import path from "node:path";
-import {fileURLToPath} from "url";
+import {fileURLToPath} from "node:url";
 import {type AgentsController, AgentSessionMessageType} from "./AgentsController.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";

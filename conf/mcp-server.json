@@ -12,7 +12,7 @@
     },
     "whatsapp": {
       "command": "node",
-      "args": ["./3rd-party/mcp-whatsapp-web/dist/index.js"],
+      "args": ["./3rd-party/whatsapp-mcp-ts/src/main.ts"],
       "description": "Communication with WhatsApp Web for sending messages and media"
     }
   }

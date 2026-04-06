@@ -11,18 +11,18 @@ import {
 import type {ProviderConfigInput} from "../mapper/ProviderConfigInput.ts";
 import {InternalLogger} from "../LogConfig.ts";
 import {DatabaseConnectorService} from "./DatabaseConnectorService.ts";
-import {fileURLToPath} from "url";
-import path from "path";
+import {fileURLToPath} from "node:url";
+import path from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class LLMSessionsService {
-    private authStorage = new AuthStorage();
+    private readonly authStorage = new AuthStorage();
     private modelRegistry = new ModelRegistry(this.authStorage);
-    private loader = new DefaultResourceLoader({ cwd: process.cwd() });
-    private logger = new InternalLogger(__filename);
-    private databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
+    private readonly loader = new DefaultResourceLoader({ cwd: process.cwd() });
+    private readonly logger = new InternalLogger(__filename);
+    private readonly databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
 
     public async init() {
         await this.loadSkills();
@@ -87,12 +87,9 @@ export class LLMSessionsService {
         }
     }
     
-    async isLLMProviderAndModelsConfigured(): Promise<Boolean> {
+    async isLLMProviderAndModelsConfigured(): Promise<boolean> {
         let llmProviders = await this.databaseConnector.getLLMProvider();
         let allModels = llmProviders ? llmProviders.flatMap(provider => provider.models || []) : [];
-        if (llmProviders == null || llmProviders.length == 0 || allModels.length == 0) {
-            return false;
-        }
-        return true;
+        return !(llmProviders == null || llmProviders.length == 0 || allModels.length == 0);
     }
 }

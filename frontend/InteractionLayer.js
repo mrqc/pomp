@@ -97,6 +97,7 @@ export class InteractionLayer extends LitElement {
                     videoWidth,
                     videoHeight);
                 if (this.hands.length > 0) {
+                    return;
                     let paddingX = 800;
                     let paddingY = 500;
                     let sumPxs = this.smootherXPoints.reduce((acc, val) => acc + val, 0);
