@@ -1,5 +1,5 @@
 import {Deepstream} from '@deepstream/server';
-import {fileURLToPath} from "url";
+import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {InternalLogger} from "../LogConfig.ts";
 import {DeepstreamClient} from "@deepstream/client";
@@ -11,9 +11,9 @@ const __dirname = path.dirname(__filename);
 
 export class ClientServerSynchronizationService {
 
-    private server = new Deepstream();
-    private client = new DeepstreamClient("localhost:6020")
-    private static logger = new InternalLogger(__filename);
+    private readonly server = new Deepstream();
+    private readonly client = new DeepstreamClient("localhost:6020")
+    private static readonly logger = new InternalLogger(__filename);
 
     private constructor() {
         ClientServerSynchronizationService.logger.info("Starting stream server...");

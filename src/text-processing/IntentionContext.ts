@@ -1,12 +1,8 @@
 import type {Intention} from './Intention.ts'
 import type {AgentMessage} from "@mariozechner/pi-agent-core";
-import type {TextContent} from "@mariozechner/pi-ai/dist/types";
 import {InternalLogger} from "../LogConfig.ts";
-import {fileURLToPath} from "url";
-import path from "path";
-import {AgentSessionMessageType} from "../controller/AgentsController.ts";
-import type {ImageContent} from "@mariozechner/pi-ai";
-import type {Image} from "./Image.ts";
+import {fileURLToPath} from "node:url";
+import path from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,7 +73,7 @@ export class IntentionContextService {
                     element.text += imagesToConsolidate;
                 }
             } else if (element.type === "image") {
-                imagesToConsolidate += `<img src="data:${element.mimeType};base64,${element.data}" />`;
+                imagesToConsolidate += `<img alt="Image Result" src="data:${element.mimeType};base64,${element.data}" />`;
             }
         }
 

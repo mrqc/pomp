@@ -1,7 +1,7 @@
 import {ExpressWrapperController} from "./controller/ExpressWrapperController.ts";
 import {AudioRecordingController} from "./controller/AudioRecordingController.ts";
-import { fileURLToPath } from 'url';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import {SpeechToTextController} from "./controller/SpeechToTextController.ts";
 import {TextToSpeechController} from "./controller/TextToSpeechController.ts";
 import {Mutex} from "es-toolkit";
@@ -12,7 +12,7 @@ import {ClientServerSynchronizationService} from "./services/ClientServerSynchro
 import {DatabaseConnectorService} from "./services/DatabaseConnectorService.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
-import {MultiMCPClient, multiMcpClient} from "./mcp/client/MultiMCPClient.ts";
+import {multiMcpClient} from "./mcp/client/MultiMCPClient.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +74,7 @@ async function gracefulShutdown(signal: string) {
     databaseConnector.close();
     audioPlaying.close();
     Tools.cleanup();
+    multiMcpClient.shutdown();
     process.exit(0);
 }
 
@@ -81,4 +82,5 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('exit', () => gracefulShutdown('exit'));
 
-startup().then(r => logger.info("Listening..."));
+await startup()
+logger.info("Listening...");

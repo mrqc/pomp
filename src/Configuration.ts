@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export class Configuration {
     private static readonly CONFIG_FILE = path.resolve(__dirname, '..', 'conf', 'pomp.yml');
-    private logger = new InternalLogger(__filename);
+    private readonly logger = new InternalLogger(__filename);
     public config: any;
 
     constructor() {

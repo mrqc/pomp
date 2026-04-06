@@ -1,9 +1,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { InternalLogger } from "../../LogConfig.ts";
-import { fileURLToPath } from "url";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -136,7 +136,7 @@ export class MultiMCPClient {
         }
     }
 
-    async shutdown() {
+    public async shutdown() {
         this.logger.info(`Shutting down MultiMCPClient, closing ${this.sessions.size} sessions...`);
         for (const [name, session] of this.sessions) {
             try {

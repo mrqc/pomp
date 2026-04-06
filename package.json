@@ -8,7 +8,6 @@
     "build": "tsc",
     "dev": "npm run start",
     "photo": "npx tsx src/cli-tools/Photo.ts",
-    "whatsapp": "npx tsx src/cli-tools/WhatsApp.ts"
   },
   "pi": {
     "extensions": [
