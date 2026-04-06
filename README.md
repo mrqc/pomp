@@ -12,12 +12,14 @@ when we sit in the car and when go to the groceries and we do not see it. Everyw
 to "see" you via camera and also see what you are doing on the screen.
 
 The features for now:
-- Speach recognition based on a local model (no recording leaves your environment), so you can run it 24h (STT)
+- Speech recognition based on a local model (no recording leaves your environment), so you can run it 24h (STT)
 - The AI already can talk to you ("Hey buddy, what's the time?" - "It is monday, XX:XX") via a local model (so the
   text generate for speech - different to the LLM result - is not leaving your computer)
 - Configuration for different LLMs and other parameters of your choice (OpenAI, Gemini, ...)
 - Viewing the current session
 - Viewing the current speech transcription context window (text currently transcribed)
+- MCP integration to use different skills (e.g. for calendar, email, weather, news, ...) and also the possibility to
+  install new skills you admire (WhatsApp MCP included)
 
 For now POMP supports voice and you are free to install new skills you admire. The supported language for now
 is english. There is a configuration UI available. Near future steps are: 
