@@ -7,7 +7,7 @@
     "start": "./start.sh",
     "build": "tsc",
     "dev": "npm run start",
-    "photo": "npx tsx src/cli-tools/Photo.ts",
+    "photo": "npx tsx src/cli-tools/Photo.ts"
   },
   "pi": {
     "extensions": [

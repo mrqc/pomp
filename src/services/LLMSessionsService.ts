@@ -36,6 +36,7 @@ export class LLMSessionsService {
             sessionManager: SessionManager.inMemory(),
             authStorage: this.authStorage,
             modelRegistry: this.modelRegistry,
+            //model: this.modelRegistry.find("google", "gemma3:270M-UD-Q4_K_XL")!
         });
         return sessionCreationResult.session;
     }

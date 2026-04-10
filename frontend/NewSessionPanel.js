@@ -69,7 +69,7 @@ class NewSessionPanel extends LitElement {
     render() {
         return html`
             <div class="container">
-                <textarea placeholder="Type your message here..."></textarea>
+                <textarea placeholder="Type your message here...">Buddy, what's the time?</textarea>
                 <button class="send-btn" @click="${this.handleSend}">Send</button>
             </div>
         `;

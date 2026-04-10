@@ -26,14 +26,15 @@ export class TextToSpeechController {
     async init() {
         fs.ensureDirSync(TextToSpeechController.AUDIO_DIR);
         this.textToSpeechModel = await KokoroTTS.from_pretrained(TextToSpeechController.modelId, {
-            dtype: "fp32",
+            dtype: "fp32"
         });
         if ( !InternalLogger.isDebug()) {
             const stream = this.textToSpeechModel.stream(
                 this.splitter,
                 { 
                     speed: TextToSpeechController.textSpeed, 
-                    split_pattern: /\t/ 
+                    split_pattern: /\t/ ,
+                    voice: "am_onyx"
                 });
             (async () => {
                 for await (const {text, phonemes, audio} of stream) {

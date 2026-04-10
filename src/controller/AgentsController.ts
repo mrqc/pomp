@@ -13,8 +13,8 @@ import {join} from "node:path";
 import {readFile, appendFile} from "node:fs/promises";
 import {IntentionContextService} from "../text-processing/IntentionContext.ts";
 import {LLMSessionsService} from "../services/LLMSessionsService.ts";
-import {access, constants, writeFile} from "node:fs";
 import {jsonToPlainText} from "json-to-plain-text";
+import type {AssistantMessage} from "@mariozechner/pi-ai";
 
 export enum AgentSessionMessageType {
     USER_TEXT_INPUT,
@@ -23,11 +23,18 @@ export enum AgentSessionMessageType {
     EVENT
 }
 
+enum StreamSpeakIntentionState {
+    WAIT_FOR_TAG,
+    TAG_COMPLETE,
+    SPOKE
+}
+
 export interface AgentSessionProvisioning {
     id: string;
     timestamp: number;
     workspace: string;
     title: string;
+    ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState;
 }
 
 export interface InternalAgentSessionProvisioning extends AgentSessionProvisioning {
@@ -61,7 +68,7 @@ export class AgentsController {
             return await readFile(filepath, "utf-8");
         } catch (error) {
             this.logger.error("Error while getting file: " + error);
-            return "";
+            return "Currently there is no information available.";
         }
     }
 
@@ -84,6 +91,7 @@ export class AgentsController {
                     await this.databaseConnector.deleteAllLLMProviders();
                     for (let index = 0; index < value.length; index++) {
                         const providerConfig = value[index];
+                        this.logger.info("Storing " + JSON.stringify(providerConfig) + " as LLM provider config");
                         await this.databaseConnector.saveLLMProvider(index, providerConfig);
                     }
                     this.logger.info(`Stored ${value.length} LLM provider(s) from config update.`);
@@ -142,12 +150,20 @@ export class AgentsController {
             this.logger.info("Session is: " + (session != undefined))
             this.addMessageToSession(text, null, session, messageType);
             this.logger.info("Message added to session: " + session.id)
+            this.logger.info("Providing prompt " + text + " to session")
+            
             if (session.agentSession.isStreaming) {
                 this.logger.info("Followup: " + text)
                 await session.agentSession.followUp(text);
             } else {
-                this.logger.info("Prompting: " + text)
-                await session.agentSession.prompt(text);
+                if (session.agentSession.getSteeringMessages().length > 0) {
+                    this.logger.info("Steering: " + text)
+                    await session.agentSession.steer(text);
+                    await session.agentSession.prompt("");
+                } else {
+                    this.logger.info("Prompting: " + text)
+                    await session.agentSession.prompt(text);
+                }
             }
         } finally {
             this.modelRegistryMutex.release();
@@ -189,8 +205,18 @@ export class AgentsController {
         let internalSession = this.addSession(session, text, workspace)
         this.logger.info("Session added")
         session.subscribe((event) => {
-            if ("agent_end" == event.type) {
+            if ("message_update" == event.type) {
+                let intentionContext = this.intentionContextService.getIntentionContext([event.message])
+                if (intentionContext.speakIntention !== undefined 
+                    && intentionContext.speakIntention.text.trim() !== ""
+                    && internalSession.ongoingStreamSpeakIntentionExtracted == StreamSpeakIntentionState.WAIT_FOR_TAG) {
+                    internalSession.ongoingStreamSpeakIntentionExtracted = StreamSpeakIntentionState.TAG_COMPLETE;
+                    this.textToSpeech.say(intentionContext.speakIntention.text);
+                    internalSession.ongoingStreamSpeakIntentionExtracted = StreamSpeakIntentionState.SPOKE;
+                }
+            } else if ("agent_end" == event.type) {
                 this.logger.info(JSON.stringify(event, null, 2));
+                this.logger.info("Received event of type " + event.type + " for session " + internalSession.id);
                 let lastUserMessageIndex = -1;
                 for (let messageIndex = event.messages.length - 1; messageIndex >= 0; messageIndex--) {
                     if (event.messages[messageIndex]?.role == "user") {
@@ -198,9 +224,10 @@ export class AgentsController {
                         break;
                     }
                 }
+                internalSession.ongoingStreamSpeakIntentionExtracted = StreamSpeakIntentionState.WAIT_FOR_TAG;
                 let relevantMessages = lastUserMessageIndex == -1 ? event.messages : event.messages.slice(lastUserMessageIndex + 1);
-                let contentIntentionText = null;
                 let assistantMessages = relevantMessages.filter((message: any) => ["assistant", "toolResult"].includes(message.role));
+                let contentIntentionText = null;
                 let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
                 this.logger.info("intentions: " + JSON.stringify(intentionContext))
                 if (intentionContext.contentIntention !== undefined) {
@@ -210,7 +237,6 @@ export class AgentsController {
                 }
 
                 if (intentionContext.speakIntention !== undefined && intentionContext.speakIntention.text.trim() !== "") {
-                    this.textToSpeech.say(intentionContext.speakIntention.text);
                     this.addMessageToSession(
                         intentionContext.speakIntention.text, 
                         contentIntentionText,
@@ -229,12 +255,46 @@ export class AgentsController {
             }
         });
         session.setSteeringMode("all");
+        let interimMessage = {
+            role: "assistant",
+            content: [{
+                type: "text",
+                text: "..."
+            }],
+            api: "openapi-completion",
+            provider: "google",
+            model: "gemma3",
+            stopReason: "stop",
+            usage: {
+                input: 1,
+                output: 1,
+                cacheRead: 1,
+                cacheWrite: 1,
+                totalTokens: 1,
+                cost: {
+                    input: 1,
+                    output: 1,
+                    cacheRead: 1,
+                    cacheWrite: 1,
+                    total: 1,
+                }
+            }
+        };
+        session.agent.steer({
+            ...interimMessage,
+            timestamp: Date.now()
+        } as AssistantMessage);
+        await session.steer(
+            await this.getFileContent("INTENTION.md") + "\n" +
+            await this.getFileContent("OWNER.md") + "\n" +
+            await this.getFileContent("SOUL.md") + "\n" +
+            "Here is context information which is maybe needed: " + (await this.getFileContent("LONGTERMMEMORY.md"))
+        );
+        session.agent.steer({
+            ...interimMessage,
+            timestamp: Date.now()
+        } as AssistantMessage);
         this.logger.info("Steered session");
-        await session.steer(await this.getFileContent("INTENTION.md"))
-        await session.steer(await this.getFileContent("OWNER.md"))
-        await session.steer(await this.getFileContent("SOUL.md"))
-        await session.steer("Here is context information which is maybe needed: " + (await this.getFileContent("LONGTERMMEMORY.md")))
-        this.logger.info("Providing prompt " + text + " to session")
         return internalSession;
     }
 
@@ -246,7 +306,8 @@ export class AgentsController {
             timestamp: Date.now(),
             workspace: "New Session",
             messages: [],
-            title: text.slice(0, 50) + "…"
+            title: text.slice(0, 50) + "…",
+            ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState.WAIT_FOR_TAG
         } as InternalAgentSessionProvisioning;
         this.logger.info("Adding session " + newSession.id);
         this.agentSessions.push(newSession);

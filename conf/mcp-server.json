@@ -1,19 +1,28 @@
 {
   "mcpServers": {
     "playwright": {
+      "type": "node",
       "command": "npx",
       "args": ["-y", "@playwright/mcp", "--browser", "chrome"],
       "description": "Browser automation and testing via Playwright"
     },
     "weather": {
+      "type": "node",
       "command": "npx",
       "args": ["-y", "@dangahagan/weather-mcp@latest"],
       "description": "Provides weather information for specified locations"
     },
     "whatsapp": {
+      "type": "node",
       "command": "node",
       "args": ["./3rd-party/whatsapp-mcp-ts/src/main.ts"],
       "description": "Communication with WhatsApp Web for sending messages and media"
+    },
+    "chrome-devtools": {
+      "type": "node",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--slim", "--headless"],
+      "description": "A browser to interact with web pages, powered by Chrome DevTools Protocol"
     }
   }
 }

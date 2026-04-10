@@ -129,7 +129,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
             modelId: 'gpt-5.2',
             modelName: 'GPT-5.2',
             reasoning: false,
-            inputType: ['text'],
+            inputType: 'text',
             costInput: 0.05, 
             costOutput: 0.4, 
             costCacheRead: 0.005, 
@@ -233,7 +233,7 @@ class LLMConfigurationPanel extends ConfigurationPanel {
                 </div>
                 <div class="input-group">
                     <label>Input</label>
-                    <input .value="${model.inputType.join(', ')}" @input="${e => this._updateModelField(e, 'inputType', pIdx, mIdx)}" required>
+                    <input .value="${model.inputType}" @input="${e => this._updateModelField(e, 'inputType', pIdx, mIdx)}" required>
                 </div>
                 <div class="input-group">
                     <label>Cost (input)</label>
@@ -335,19 +335,11 @@ class LLMConfigurationPanel extends ConfigurationPanel {
     _updateModelField(e, field, pIdx, mIdx, isCheckbox = false) {
         const value = isCheckbox ? e.target.checked : e.target.value;
         if (mIdx === -1) {
-            if (field === 'inputType') {
-                this.newModel = { ...this.newModel, inputType: value.split(',').map(s => s.trim()) };
-            } else {
-                this.newModel = { ...this.newModel, [field]: value };
-            }
+            this.newModel = { ...this.newModel, [field]: value };
         } else {
             const providers = [...this.providers];
             const models = [...providers[pIdx].models];
-            if (field === 'inputType') {
-                models[mIdx] = { ...models[mIdx], inputType: value.split(',').map(s => s.trim()) };
-            } else {
-                models[mIdx] = { ...models[mIdx], [field]: value };
-            }
+            models[mIdx] = { ...models[mIdx], [field]: value };
             providers[pIdx].models = models;
             this.providers = providers;
         }

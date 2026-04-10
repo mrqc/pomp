@@ -332,37 +332,49 @@ export class DatabaseConnectorService {
                     }
                     // Upsert models if present
                     if (Array.isArray(providerConfig.models)) {
-                        const modelOps = providerConfig.models.map((model: any, idx: number) => {
-                            return new Promise<void>((res, rej) => {
-                                const id = idx;
-                                const modelId = model.modelId;
-                                const modelName = model.modelName;
-                                const reasoning = model.reasoning ? 1 : 0;
-                                const inputType = model.inputType;
-                                const costInput = model.costInput ?? 0;
-                                const costOutput = model.costOutput ?? 0;
-                                const costCacheRead = model.costCacheRead ?? 0;
-                                const costCacheWrite = model.costCacheWrite ?? 0;
-                                const contextWindow = model.contextWindow ?? 0;
-                                const maxTokens = model.maxTokens ?? 0;
-                                const status = model.status || 'active';
-                                this.database.run(
-                                    `insert or replace into LLMProviderModel (id, llmProviderId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                                    [id, providerId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
-                                    (err: Error | null) => {
-                                        if (err) {
-                                            this.logger.error("Error saving LLMProviderModel: " + err);
-                                            rej(err);
-                                        } else {
-                                            res();
-                                        }
-                                    }
-                                );
-                            });
-                        });
-                        Promise.all(modelOps)
-                            .then(() => resolve())
-                            .catch(reject);
+                        this.database.get(
+                            `select ifnull(max(id), 0) as maxId from LLMProviderModel`,
+                            [],
+                            (err: Error | null, row: any) => {
+                                if (err) {
+                                    this.logger.error("Error fetching max model id: " + err);
+                                    reject(err);
+                                    return;
+                                }
+                                const baseId = row.maxId + 1;
+                                const modelOps = providerConfig.models.map((model: any, idx: number) => {
+                                    return new Promise<void>((res, rej) => {
+                                        const id = baseId;
+                                        const modelId = model.modelId;
+                                        const modelName = model.modelName;
+                                        const reasoning = model.reasoning ? 1 : 0;
+                                        const inputType = model.inputType;
+                                        const costInput = model.costInput ?? 0;
+                                        const costOutput = model.costOutput ?? 0;
+                                        const costCacheRead = model.costCacheRead ?? 0;
+                                        const costCacheWrite = model.costCacheWrite ?? 0;
+                                        const contextWindow = model.contextWindow ?? 0;
+                                        const maxTokens = model.maxTokens ?? 0;
+                                        const status = model.status || 'active';
+                                        this.database.run(
+                                            `insert or replace into LLMProviderModel (id, llmProviderId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                            [id, providerId, modelId, modelName, reasoning, inputType, costInput, costOutput, costCacheRead, costCacheWrite, contextWindow, maxTokens, status],
+                                            (err: Error | null) => {
+                                                if (err) {
+                                                    this.logger.error("Error saving LLMProviderModel: " + err);
+                                                    rej(err);
+                                                } else {
+                                                    res();
+                                                }
+                                            }
+                                        );
+                                    });
+                                });
+                                Promise.all(modelOps)
+                                    .then(() => resolve())
+                                    .catch(reject);
+                            }
+                        );
                     } else {
                         resolve();
                     }
