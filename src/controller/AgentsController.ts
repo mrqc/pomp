@@ -155,15 +155,13 @@ export class AgentsController {
             if (session.agentSession.isStreaming) {
                 this.logger.info("Followup: " + text)
                 await session.agentSession.followUp(text);
+            } else if (session.agentSession.getSteeringMessages().length > 0) {
+                this.logger.info("Steering: " + text)
+                await session.agentSession.steer(text);
+                await session.agentSession.prompt("");
             } else {
-                if (session.agentSession.getSteeringMessages().length > 0) {
-                    this.logger.info("Steering: " + text)
-                    await session.agentSession.steer(text);
-                    await session.agentSession.prompt("");
-                } else {
-                    this.logger.info("Prompting: " + text)
-                    await session.agentSession.prompt(text);
-                }
+                this.logger.info("Prompting: " + text)
+                await session.agentSession.prompt(text);
             }
         } finally {
             this.modelRegistryMutex.release();
