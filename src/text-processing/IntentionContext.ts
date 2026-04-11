@@ -11,7 +11,7 @@ export interface IntentionContext {
     speakIntention: Intention,
     contentIntention: Intention,
     waitIntention: Intention,
-    goIntention: Intention,
+    conversationIntention: Intention,
     longTermMemoryIntention: Intention,
     text: string
 }
@@ -41,7 +41,7 @@ export class IntentionContextService {
         let speakIntention = this.getIntentionContent(intentions, "SPEAK");
         let contentIntention = this.getIntentionContent(intentions, "CONTENT");
         let waitIntention = this.getIntentionContent(intentions, "WAIT");
-        let goIntention = this.getIntentionContent(intentions, "GO");
+        let conversationIntention = this.getIntentionContent(intentions, "CONVERSATION");
         let longTermMemoryIntention = this.getIntentionContent(intentions, "LONGTERMMEMORY");
         
         let overallTextResponseContent = this.removeIntentionContents(resolvedTextContent);
@@ -49,7 +49,7 @@ export class IntentionContextService {
             speakIntention: speakIntention,
             contentIntention: contentIntention,
             waitIntention: waitIntention,
-            goIntention: goIntention,
+            conversationIntention: conversationIntention,
             longTermMemoryIntention: longTermMemoryIntention,
             text: overallTextResponseContent
         }

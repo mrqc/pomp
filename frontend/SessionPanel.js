@@ -149,6 +149,9 @@ export class SessionPanel extends LitElement {
     }
     
     updateWorkspace(value) {
+        if (value == null) {
+            return;
+        }
         this.workspace = value;
         this.requestUpdate();
     }

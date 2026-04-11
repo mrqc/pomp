@@ -29,12 +29,19 @@ enum StreamSpeakIntentionState {
     SPOKE
 }
 
+export enum ConversationStatus {
+    NO_CONVERSATION,
+    ONGOING,
+    WAIT
+}
+
 export interface AgentSessionProvisioning {
     id: string;
     timestamp: number;
     workspace: string;
     title: string;
     ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState;
+    conversation: ConversationStatus
 }
 
 export interface InternalAgentSessionProvisioning extends AgentSessionProvisioning {
@@ -131,6 +138,10 @@ export class AgentsController {
         });
     }
     
+    public getAgentSession(sessionId: string) {
+        return this.agentSessions.find((anInternalSession) => anInternalSession.id == sessionId)
+    }
+    
     public async prompt(text: string, messageType: AgentSessionMessageType, sessionId: string | null) {
         if ( !await this.llmSessionsService.isLLMProviderAndModelsConfigured()) {
             this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
@@ -143,7 +154,7 @@ export class AgentsController {
             await this.modelRegistryMutex.acquire();
             this.logger.info("Trying to get session for id " + sessionId)
             if (sessionId != null) {
-                session = this.agentSessions.find((anInternalSession) => anInternalSession.id == sessionId)
+                session = this.getAgentSession(sessionId);
             }
             this.logger.info("Found session: " + (session != undefined));
             session ??= await this.createSession(text, null);
@@ -242,6 +253,10 @@ export class AgentsController {
                         AgentSessionMessageType.ASSISTANT);
                 }
                 
+                if (intentionContext.waitIntention !== undefined) {
+                    internalSession.conversation = ConversationStatus.WAIT;
+                }
+                
                 if (intentionContext.longTermMemoryIntention !== undefined && intentionContext.longTermMemoryIntention.text != "") {
                     try {
                         appendFile("./LONGTERMMEMORY.md", intentionContext.longTermMemoryIntention.text);
@@ -249,6 +264,10 @@ export class AgentsController {
                     } catch {
                         console.log('Error writting to long term memory file.');
                     }
+                }
+                
+                if (intentionContext.contentIntention !== undefined) {
+                    internalSession.conversation = ConversationStatus.ONGOING;
                 }
             }
         });
@@ -305,7 +324,8 @@ export class AgentsController {
             workspace: "New Session",
             messages: [],
             title: text.slice(0, 50) + "…",
-            ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState.WAIT_FOR_TAG
+            ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState.WAIT_FOR_TAG,
+            conversation: ConversationStatus.NO_CONVERSATION
         } as InternalAgentSessionProvisioning;
         this.logger.info("Adding session " + newSession.id);
         this.agentSessions.push(newSession);

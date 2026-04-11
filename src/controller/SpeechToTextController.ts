@@ -4,7 +4,7 @@ import type {Logger} from "nodejs-whisper/dist/types";
 import fs from "fs-extra";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {type AgentsController, AgentSessionMessageType} from "./AgentsController.ts";
+import {type AgentsController, AgentSessionMessageType, ConversationStatus} from "./AgentsController.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 
@@ -112,7 +112,7 @@ export class SpeechToTextController {
             let text = await this.putTextIntoPhrases(outputFileName);
             await this.clientServerSynchronization.setRecord("SpeechContext", "text", this.getCurrentStreamText());
             this.logger.info("transformation process length: " + text.length + " isActive " + this.isActive())
-            if (this.currentStreamTextContainsActivationKeyword()) {
+            if (this.currentStreamTextContainsActivationKeyword() || this.isActiveConversation()) {
                 this.setActive();
                 this.logger.info("Activation via keyword in context window")
                 let currentContextWindow = this.getCurrentStreamText();
@@ -126,6 +126,18 @@ export class SpeechToTextController {
             this.logger.error('Error reading JSON file: ' + error);
         }
     }
+    
+    private isActiveConversation() {
+        if (this.currentSessionId == null) {
+            return false;
+        }
+        let agentSession = this.agentsController.getAgentSession(this.currentSessionId);
+        if (agentSession == undefined) {
+            return false;
+        }
+        return [ConversationStatus.ONGOING, ConversationStatus.WAIT].includes(agentSession.conversation);
+    }
+
 
     private async putTextIntoPhrases(outputFileName: string) {
         let jsonFile = outputFileName + '.json';
