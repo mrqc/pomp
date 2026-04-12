@@ -245,19 +245,17 @@ export class AgentsController {
                     this.clientServerSynchronization.setRecord("session-" + internalSession.id, "workspace", intentionContext.contentIntention.text);
                 }
 
-                if (intentionContext.speakIntention !== undefined && intentionContext.speakIntention.text.trim() !== "") {
+                if (intentionContext.speakIntention !== undefined 
+                        && intentionContext.speakIntention.text.trim() !== "") {
                     this.addMessageToSession(
                         intentionContext.speakIntention.text, 
                         contentIntentionText,
                         internalSession, 
                         AgentSessionMessageType.ASSISTANT);
                 }
-                
-                if (intentionContext.waitIntention !== undefined) {
-                    internalSession.conversation = ConversationStatus.WAIT;
-                }
-                
-                if (intentionContext.longTermMemoryIntention !== undefined && intentionContext.longTermMemoryIntention.text != "") {
+
+                if (intentionContext.longTermMemoryIntention !== undefined 
+                        && intentionContext.longTermMemoryIntention.text.trim() != "") {
                     try {
                         appendFile("./LONGTERMMEMORY.md", intentionContext.longTermMemoryIntention.text);
                         console.log('File updated successfully.');
@@ -266,7 +264,16 @@ export class AgentsController {
                     }
                 }
                 
-                if (intentionContext.contentIntention !== undefined) {
+                if (intentionContext.waitIntention !== undefined) {
+                    internalSession.conversation = ConversationStatus.WAIT;
+                    this.addMessageToSession(
+                        "Expecting more...",
+                        null,
+                        internalSession,
+                        AgentSessionMessageType.EVENT);
+                } else if (intentionContext.conversationIntention === undefined) {
+                    internalSession.conversation = ConversationStatus.NO_CONVERSATION;
+                } else {
                     internalSession.conversation = ConversationStatus.ONGOING;
                 }
             }

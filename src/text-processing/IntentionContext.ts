@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export interface IntentionContext {
-    speakIntention: Intention,
-    contentIntention: Intention,
-    waitIntention: Intention,
-    conversationIntention: Intention,
-    longTermMemoryIntention: Intention,
+    speakIntention: Intention | undefined,
+    contentIntention: Intention | undefined,
+    waitIntention: Intention | undefined,
+    conversationIntention: Intention | undefined,
+    longTermMemoryIntention: Intention | undefined,
     text: string
 }
 
@@ -123,13 +123,10 @@ export class IntentionContextService {
     }
 
 
-    private getIntentionContent(intentions: Intention[], intentionName: string): Intention {
+    private getIntentionContent(intentions: Intention[], intentionName: string): Intention | undefined {
         let intention = intentions.find((anIntention) => anIntention.tagName == intentionName);
         if (intention == undefined) {
-            return {
-                tagName: intentionName,
-                text: ""
-            }
+            return undefined;
         }
         return intention
     }
