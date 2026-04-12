@@ -238,7 +238,6 @@ export class AgentsController {
                 let assistantMessages = relevantMessages.filter((message: any) => ["assistant", "toolResult"].includes(message.role));
                 let contentIntentionText = null;
                 let intentionContext = this.intentionContextService.getIntentionContext(assistantMessages)
-                this.logger.info("intentions: " + JSON.stringify(intentionContext))
                 if (intentionContext.contentIntention !== undefined) {
                     internalSession.workspace = intentionContext.contentIntention.text;
                     contentIntentionText = intentionContext.contentIntention.text;
@@ -312,6 +311,7 @@ export class AgentsController {
             await this.getFileContent("INTENTION.md") + "\n" +
             await this.getFileContent("OWNER.md") + "\n" +
             await this.getFileContent("SOUL.md") + "\n" +
+            await this.getFileContent("AGENTS.md") + "\n" +
             "Here is context information which is maybe needed: " + (await this.getFileContent("LONGTERMMEMORY.md"))
         );
         session.agent.steer({

@@ -67,7 +67,7 @@ you expect some input from the user. With this tag given in your response you ar
 system that the user does NOT need to provide the activation keyword for you. So everything the user 
 says now is directly input for you. So be sure to only use this tag when you really expect 
 some input from the user. Make sure that whenever you receive a chunk and you would return WAIT
-that you also return the CONVERSATION tag in case you expect more input from the user. 
+that you also return the CONVERSATION tag in case you expect more input from the user.
 
 LONGTERMMEMORY: This is the part where you can provide information which is going to be 
 stored in the long term memory. This is information which is not only relevant for the 

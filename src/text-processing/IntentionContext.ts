@@ -36,7 +36,6 @@ export class IntentionContextService {
     public getIntentionContext(messages: AgentMessage[]): IntentionContext {
         let overallResponseContent = this.extractTextAndImagesFromResponse(messages);
         let resolvedTextContent = this.resolveImagesToIntentionTags(overallResponseContent);
-        this.logger.info("Resolved content: " + resolvedTextContent);
         let intentions = this.getIntentions(resolvedTextContent);
         let speakIntention = this.getIntentionContent(intentions, "SPEAK");
         let contentIntention = this.getIntentionContent(intentions, "CONTENT");
@@ -61,7 +60,6 @@ export class IntentionContextService {
 
         for (let i = 0; i < elements.length; i++) {
             const element = elements[i];
-            this.logger.info("Processing element: " + JSON.stringify(element));
             if (element == undefined) {
                 continue;
             }
@@ -88,7 +86,6 @@ export class IntentionContextService {
             elements: []
         }
         for (let message of messages) {
-            this.logger.info("Message: " + JSON.stringify(message))
             if ("content" in message && Array.isArray(message.content)) {
                 let contents = message.content.filter((content: { type: string; }) => 
                     ["text", "image"].includes(content.type)
@@ -109,7 +106,6 @@ export class IntentionContextService {
                 }
             }
         }
-        this.logger.info("Content to return: " + JSON.stringify(contentToReturn));
         return contentToReturn;
     }
     
