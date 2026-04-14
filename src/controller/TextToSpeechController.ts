@@ -89,4 +89,8 @@ export class TextToSpeechController {
             fs.removeSync(TextToSpeechController.AUDIO_DIR);
         }
     }
+    
+    cancelSpeech() {
+        fs.emptyDirSync(TextToSpeechController.AUDIO_DIR);
+    }
 }

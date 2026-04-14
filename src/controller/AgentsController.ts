@@ -142,9 +142,27 @@ export class AgentsController {
         return this.agentSessions.find((anInternalSession) => anInternalSession.id == sessionId)
     }
     
+    private isStopSentence(text: string): boolean {
+        if (!text.trim()) {
+            return false;
+        }
+        const words = text
+            .toLowerCase()
+            .replaceAll(/[^\w\s]/g, '')
+            .split(/\s+/);
+        const totalWords = words.length;
+        const stopCount = words.filter(word => word === 'stop').length;
+        return stopCount > totalWords / 2;
+    }
+    
     public async prompt(text: string, messageType: AgentSessionMessageType, sessionId: string | null) {
         if ( !await this.llmSessionsService.isLLMProviderAndModelsConfigured()) {
             this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
+            return;
+        }
+        if (this.isStopSentence(text)) {
+            this.textToSpeech.cancelSpeech();
+            this.textToSpeech.say("Sorry");
             return;
         }
         this.logger.info("Creating session with prompt: " + text)
