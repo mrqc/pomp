@@ -38,6 +38,27 @@ export class SessionPanel extends LitElement {
             padding: 10px;
             border-radius: 4px;
             cursor: pointer;
+            position: relative;
+        }
+
+        .stop-button {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background-color: #d9534f;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            font-size: 0.75em;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .stop-button:hover {
+            opacity: 1;
+            background-color: #c9302c;
         }
 
         .message:hover {
@@ -57,6 +78,10 @@ export class SessionPanel extends LitElement {
         }
 
         .message-type-3 /*EVENT*/ {
+            background-color: #10112d;
+        }
+
+        .message-type-4 /*EVENT*/ {
             background-color: #10112d;
         }
 
@@ -154,10 +179,16 @@ export class SessionPanel extends LitElement {
         }
         this.workspace = value;
         this.requestUpdate();
+        this.executeScripts();
     }
 
     firstUpdated() {
         this.shadowRoot.addEventListener('click', (e) => this.handleAction(e));
+        this.shadowRoot.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.closest('#workspace-container form')) {
+                e.preventDefault();
+            }
+        });
     }
 
     updated(changedProperties) {
@@ -167,6 +198,21 @@ export class SessionPanel extends LitElement {
             this.messages = [];
             this.initSession();
         }
+    }
+
+    executeScripts() {
+        const container = this.shadowRoot.querySelector('#workspace-container');
+        if (!container) return;
+
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
     }
     
     initialMessageListCallback = async (listOfRecords) => {
@@ -261,6 +307,16 @@ export class SessionPanel extends LitElement {
         }
     }
 
+    stopMessage(e, message) {
+        e.stopPropagation();
+        if (this.clientServerSynchronization && this.session) {
+            this.clientServerSynchronization.sendEvent("conversation-emergency-stop", {
+                sessionId: this.session.id,
+                action: "cancel-by-stop"
+            });
+        }
+    }
+
     render() {
         if (!this.session) {
             return html`No session`;
@@ -275,6 +331,9 @@ export class SessionPanel extends LitElement {
                         <div class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString()}</div>
                         ${message.data ? html`<img src="" style="max-width: 100%; height: auto; margin-bottom: 8px; border-radius: 4px;" />` : html``}
                         <div class="message-text">${message.text}</div>
+                        ${message.type === 4 ? html`
+                            <button class="stop-button" @click="${(e) => this.stopMessage(e, message)}">⏹</button>
+                        ` : html``}
                     </div>
                 `)}
                 <div id="input-container">

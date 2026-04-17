@@ -86,6 +86,9 @@ export class SpeechToTextController {
 
     async writeAudioFileToTextStream(outputFileName: string) {
         fs.ensureDirSync(SpeechToTextController.TRANSLATION_DIR);
+        if (!fs.existsSync(outputFileName) || fs.statSync(outputFileName).size === 0) {
+            return;
+        }
         await this.transformSpeechToIntermediaryOutput(outputFileName)
         await this.transformIntermediaryOutputToPhrases(outputFileName)
     }
@@ -191,19 +194,9 @@ export class SpeechToTextController {
                 removeWavFileAfterTranscription: !InternalLogger.isDebug(),
                 withCuda: true,
                 logger: new class implements Logger {
-                    private readonly logger = new InternalLogger(__filename)
-
-                    debug(args: any): void {
-                        this.logger.debug(JSON.stringify(args))
-                    }
-
-                    error(args: any): void {
-                        this.logger.error(JSON.stringify(args))
-                    }
-
-                    log(args: any): void {
-                        this.logger.info(JSON.stringify(args))
-                    }
+                    debug(args: any): void {}
+                    error(args: any): void {}
+                    log(args: any): void {}
                 },
                 whisperOptions: {
                     outputInCsv: false,
@@ -222,7 +215,7 @@ export class SpeechToTextController {
             });
         } catch (error) {
             this.setInactive()
-            this.logger.error("Error" + error);
+            this.logger.error(error + "");
         }
     }
     

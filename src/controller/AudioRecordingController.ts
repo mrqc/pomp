@@ -123,7 +123,6 @@ export class AudioRecordingController {
                 }
             }
             if (silent) {
-                this.logger.info('Silence detected in audio chunk');
                 this.logger.info("silenceCount = " + this.silentCount + " wantsToSay = " + this.textToSpeech?.wantsToSaySomething() + " isPlaying = " + this.audioPlaying!.isPlaying)
                 if (this.silentCount == 0) {
                     this.stopRecording();

@@ -13,20 +13,21 @@ import {InternalLogger} from "../LogConfig.ts";
 import {DatabaseConnectorService} from "./DatabaseConnectorService.ts";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
+import { Agent } from "@mariozechner/pi-agent-core";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class LLMSessionsService {
-    private readonly authStorage = new AuthStorage();
-    private modelRegistry = new ModelRegistry(this.authStorage);
+    private readonly authStorage = AuthStorage.create()
+    private modelRegistry = ModelRegistry.create(this.authStorage)
     private readonly loader = new DefaultResourceLoader({ cwd: process.cwd() });
     private readonly logger = new InternalLogger(__filename);
     private readonly databaseConnector: DatabaseConnectorService = DatabaseConnectorService.getInstance();
 
     public async init() {
         await this.loadSkills();
-        this.modelRegistry = new ModelRegistry(this.authStorage);
+        this.modelRegistry = ModelRegistry.create(this.authStorage)
     }
 
     async getNewSession(): Promise<AgentSession> {
@@ -38,6 +39,7 @@ export class LLMSessionsService {
             modelRegistry: this.modelRegistry,
             //model: this.modelRegistry.find("google", "gemma3:270M-UD-Q4_K_XL")!
         });
+        sessionCreationResult.session.agent.toolExecution = "sequential";
         return sessionCreationResult.session;
     }
 

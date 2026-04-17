@@ -19,7 +19,6 @@ export class TextToSpeechController {
     private textToSpeechModel: KokoroTTS | null = null;
     private readonly logger = new InternalLogger(__filename);
     private readonly splitter = new TextSplitterStream();
-    private readonly generatorMutex: Mutex = new Mutex();
 
     constructor() {
         TextToSpeechController.cleanup();
@@ -80,7 +79,6 @@ export class TextToSpeechController {
     wantsToSaySomething(): boolean {
         if (fs.existsSync(TextToSpeechController.AUDIO_DIR)) {
             const files = fs.readdirSync(TextToSpeechController.AUDIO_DIR);
-            this.logger.info("files: " + JSON.stringify(files))
             return files.some(file => file.endsWith('.wav'));
         }
         return false;

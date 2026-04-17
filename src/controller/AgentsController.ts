@@ -20,7 +20,8 @@ export enum AgentSessionMessageType {
     USER_TEXT_INPUT,
     ASSISTANT,
     USER_ACTION_FEEDBACK,
-    EVENT
+    EVENT,
+    PROCEEDING_INFORMATION
 }
 
 enum StreamSpeakIntentionState {
@@ -129,6 +130,18 @@ export class AgentsController {
                 this.logger.error("LLM Providers config update did not provide an array of ProviderConfigInput");
                 this.clientServerSynchronization.sendGuiError("Unable to store LLM provider(s).")
             }
+        });
+        this.clientServerSynchronization.subscribeOnEvent("conversation-emergency-stop", (cancelEvent) => {
+            let session = this.getAgentSession(cancelEvent.sessionId);
+            if (session == undefined) {
+                return;
+            }
+            session.conversation = ConversationStatus.NO_CONVERSATION;
+            this.addMessageToSession(
+                "No actual user inputs expected anymore.",
+                null,
+                session,
+                AgentSessionMessageType.EVENT);
         });
         this.clientServerSynchronization.subscribeOnEvent("new-session-via-message", (newMessageEvent) => {
             this.prompt(newMessageEvent.text,
@@ -303,7 +316,7 @@ export class AgentsController {
                         "Just proceed...",
                         null,
                         internalSession,
-                        AgentSessionMessageType.EVENT);
+                        AgentSessionMessageType.PROCEEDING_INFORMATION);
                 } else if (intentionContext.conversationIntention === undefined) {
                     internalSession.conversation = ConversationStatus.NO_CONVERSATION;
                 } else {
@@ -312,7 +325,7 @@ export class AgentsController {
                         "Go on...",
                         null,
                         internalSession,
-                        AgentSessionMessageType.EVENT);
+                        AgentSessionMessageType.PROCEEDING_INFORMATION);
                 }
             }
         });

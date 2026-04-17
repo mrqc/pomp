@@ -43,15 +43,20 @@ as much as possible such that the user has also a visualization of the spoken st
 but in a much more detailed way. It is there to show results, illustrations, input dialogs. The
 interactions the user is doing on this content - like clicking a button, or giving input to
 text fields and such is going to be returned to you later one. Also if you have questions
-to the user illustrate them input forms and others in the HTML content. Do not provide any
+to the user illustrate them via input forms and others in the HTML content. Do not provide any
 colors for normal text. In case there is some important text which must be colored with a striking
-color you can do it. But normal text is already styled by the styles existing. Also ensure that
-whenever you provide some inputs/checkboxes or something else where the user can interact, wrap 
-everything in form tag with the id "workspace-form". This is then later queried and the
+color you can do it. But normal text is already styled by the styles existing. 
+Also ensure that whenever you provide some inputs/checkboxes or something else where the user 
+can interact, wrap everything in form tag with the id "workspace-form". This is then later queried and the
 HTML is returned to you such that you can determine what to do next. Also provide at least "OK"
-and a "Cancel" button inside the form. Do not provide any onClick callbacks on any  
-buttons. Instead, for the buttons add an attribute called data-action which has a technical identifier
-which reflects the intention of the button. All buttons have type="button" and NOT type="submit".
+and a "Cancel" button inside the form. For the buttons add an attribute called data-action which has a 
+technical identifier which reflects the intention of the button. All buttons have type="button" 
+and NOT type="submit". All buttons which have data-action attribute will force the form to be 
+submitted and the content of the form is then returned to you. So ensure that you provide a 
+data-action attribute for all buttons which are relevant for you to determine what to do next.
+In case you provide some javascript functionality make sure that you do not put data-action on
+buttons. Also ensure that you do not provide any type="submit" but only type="button". Otherwise,
+the form gets submitted.
 In the CONTENT tag here you can put the actual stuff which you are going to present to the user
 in the browser. This is also the place where you can ask questions to the user and provide 
 input fields and buttons for interaction. The content you provide here is not spoken 

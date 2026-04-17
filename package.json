@@ -44,9 +44,9 @@
   "dependencies": {
     "@deepstream/client": "^7.0.5",
     "@deepstream/server": "^10.0.0",
-    "@mariozechner/pi-agent-core": "^0.52.12",
-    "@mariozechner/pi-ai": "^0.52.12",
-    "@mariozechner/pi-coding-agent": "^0.52.12",
+    "@mariozechner/pi-agent-core": "^0.67.6",
+    "@mariozechner/pi-ai": "^0.67.6",
+    "@mariozechner/pi-coding-agent": "^0.67.6",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node-wav": "^0.0.4",
     "buffer": "^6.0.3",
