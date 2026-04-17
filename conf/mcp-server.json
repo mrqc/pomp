@@ -23,6 +23,12 @@
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest", "--slim", "--headless"],
       "description": "A browser to interact with web pages, powered by Chrome DevTools Protocol"
+    },
+    "google-services": {
+      "type": "python",
+      "command": "uvx",
+      "args": ["--env-file", "./3rd-party/google_workspace_mcp/.env", "workspace-mcp", "--tool-tier", "extended"],
+      "description": "Integration of Google Services"
     }
   }
 }

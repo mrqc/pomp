@@ -1,1 +1,18 @@
 web-port: 4000
+jobs:
+  - name: Email Check
+    schedule: "0 * * * *"
+    command: "Check my gmail account for unread mails. If there are any, summarize them and tell me. Keep it short."
+    type: prompt
+  - name: WhatsApp Check
+    schedule: "30 * * * *"
+    command: "Check my WhatsApp account for unread messages. If there are any, summarize them and tell me. Keep it short."
+    type: prompt
+  - name: Calendar Check
+    schedule: "30 8 * * *"
+    command: "Check my google calendar for any events today. If there are any, summarize them."
+    type: prompt
+  - name: Calendar Check Upcoming
+    schedule: "* * * * *"
+    command: "Check my google calendar for any events in the next 15 minutes. If there are any, summarize them."
+    type: prompt

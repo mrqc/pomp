@@ -16,17 +16,14 @@ interface AudioFile {
 
 export class AudioPlayingController {    
     private static readonly RECORDINGS_DIR = path.resolve(__dirname, 'audio-outputs');
-    private readonly audioMutex: Mutex;
+    private audioMutex: Mutex | undefined;
     private readonly queue: AudioFile[] = [];
     public isPlaying: boolean = false;
     private watcher: any;
     private readonly logger = new InternalLogger(__filename);
 
-    constructor(audioMutex: Mutex) {
+    public init(audioMutex: Mutex) {
         this.audioMutex = audioMutex;
-    }
-    
-    public init() {
         fs.ensureDirSync(AudioPlayingController.RECORDINGS_DIR);
         this.watchDirectory();
         this.initExistingFiles();
@@ -83,11 +80,11 @@ export class AudioPlayingController {
         if (this.isPlaying) {
             return;
         }
-        this.logger.info("Acquire lock when lock status is: " + this.audioMutex.isLocked)
-        await this.audioMutex.acquire();
+        this.logger.info("Acquire lock when lock status is: " + this.audioMutex!.isLocked)
+        await this.audioMutex!.acquire();
         if (this.queue.length === 0) {
             this.logger.info("Release Lock because queue is empty")
-            this.audioMutex.release();
+            this.audioMutex!.release();
             return;
         }
         this.isPlaying = true;
@@ -95,11 +92,11 @@ export class AudioPlayingController {
         if ( !next) {
             this.isPlaying = false;
             this.logger.info("Release Lock because no next entry")
-            this.audioMutex.release();
+            this.audioMutex!.release();
             return;
         }
         try {
-            this.logger.info("playing " + next.filePath + " when lock status is: " + this.audioMutex.isLocked);
+            this.logger.info("playing " + next.filePath + " when lock status is: " + this.audioMutex!.isLocked);
             await wavPlayer.play({
                 path: next.filePath,
                 sync: true
@@ -110,7 +107,7 @@ export class AudioPlayingController {
         } finally {
             this.isPlaying = false;
             this.logger.info("Ensuring Release Lock")
-            this.audioMutex.release();
+            this.audioMutex!.release();
             this.playNext();
         }
     }

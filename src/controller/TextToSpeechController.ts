@@ -5,6 +5,7 @@ import fs from "fs-extra";
 import {fileURLToPath} from "node:url";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
+import {Mutex} from "es-toolkit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,7 @@ export class TextToSpeechController {
     private textToSpeechModel: KokoroTTS | null = null;
     private readonly logger = new InternalLogger(__filename);
     private readonly splitter = new TextSplitterStream();
+    private readonly generatorMutex: Mutex = new Mutex();
 
     constructor() {
         TextToSpeechController.cleanup();

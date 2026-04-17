@@ -40,7 +40,17 @@ export interface AgentSessionProvisioning {
     timestamp: number;
     workspace: string;
     title: string;
+    /**
+     * This is used to provide a fast user experience. When the content is streamed
+     * from the LLM to the client the SPEAK tag is extracted. If it is complete the
+     * content is immediately streamed to speak.
+     */
     ongoingStreamSpeakIntentionExtracted: StreamSpeakIntentionState;
+
+    /**
+     * is ONGOING if the LLM thinks that the user has to provide an answer or slt
+     * is WAIT if the LLM thinks that the user input was interrupted or incomplete
+     */
     conversation: ConversationStatus
 }
 
@@ -65,7 +75,7 @@ export class AgentsController {
     private readonly clientServerSynchronization: ClientServerSynchronizationService = ClientServerSynchronizationService.getInstance();
     private readonly logger = new InternalLogger(__filename);
     private readonly agentSessions: InternalAgentSessionProvisioning[] = [];
-    private readonly textToSpeech: TextToSpeechController;
+    private textToSpeech: TextToSpeechController | undefined;
     private readonly modelRegistryMutex: Mutex = new Mutex();
     private readonly llmSessionsService = new LLMSessionsService();
     
@@ -78,12 +88,18 @@ export class AgentsController {
             return "Currently there is no information available.";
         }
     }
-
-    constructor(textToSpeech: TextToSpeechController) {
-        this.textToSpeech = textToSpeech;
-    }
     
-    async init() {
+    private async appendToFile(content: string, filename: string) {
+        try {
+            const filepath = join(__dirname, "..", "..", filename);
+            await appendFile(filepath, content);
+        } catch (error) {
+            this.logger.error("Error while getting file: " + error);
+        }
+    }
+
+    async init(textToSpeech: TextToSpeechController) {
+        this.textToSpeech = textToSpeech;
         await this.loadConfigsAndSubscribe();
     }
     
@@ -157,12 +173,12 @@ export class AgentsController {
     
     public async prompt(text: string, messageType: AgentSessionMessageType, sessionId: string | null) {
         if ( !await this.llmSessionsService.isLLMProviderAndModelsConfigured()) {
-            this.textToSpeech.say("Sorry, but there are no LLM providers or models registered.");
+            this.textToSpeech!.say("Sorry, but there are no LLM providers or models registered.");
             return;
         }
         if (this.isStopSentence(text)) {
-            this.textToSpeech.cancelSpeech();
-            this.textToSpeech.say("Sorry");
+            this.textToSpeech!.cancelSpeech();
+            this.textToSpeech!.say("Sorry");
             return;
         }
         this.logger.info("Creating session with prompt: " + text)
@@ -238,7 +254,7 @@ export class AgentsController {
                     && intentionContext.speakIntention.text.trim() !== ""
                     && internalSession.ongoingStreamSpeakIntentionExtracted == StreamSpeakIntentionState.WAIT_FOR_TAG) {
                     internalSession.ongoingStreamSpeakIntentionExtracted = StreamSpeakIntentionState.TAG_COMPLETE;
-                    this.textToSpeech.say(intentionContext.speakIntention.text);
+                    this.textToSpeech!.say(intentionContext.speakIntention.text);
                     internalSession.ongoingStreamSpeakIntentionExtracted = StreamSpeakIntentionState.SPOKE;
                 }
             } else if ("agent_end" == event.type) {
@@ -274,7 +290,7 @@ export class AgentsController {
                 if (intentionContext.longTermMemoryIntention !== undefined 
                         && intentionContext.longTermMemoryIntention.text.trim() != "") {
                     try {
-                        appendFile("./LONGTERMMEMORY.md", intentionContext.longTermMemoryIntention.text);
+                        this.appendToFile(intentionContext.longTermMemoryIntention.text, "LONGTERMMEMORY.md");
                         console.log('File updated successfully.');
                     } catch {
                         console.log('Error writting to long term memory file.');
@@ -284,7 +300,7 @@ export class AgentsController {
                 if (intentionContext.waitIntention !== undefined) {
                     internalSession.conversation = ConversationStatus.WAIT;
                     this.addMessageToSession(
-                        "Expecting more...",
+                        "Just proceed...",
                         null,
                         internalSession,
                         AgentSessionMessageType.EVENT);
@@ -292,6 +308,11 @@ export class AgentsController {
                     internalSession.conversation = ConversationStatus.NO_CONVERSATION;
                 } else {
                     internalSession.conversation = ConversationStatus.ONGOING;
+                    this.addMessageToSession(
+                        "Go on...",
+                        null,
+                        internalSession,
+                        AgentSessionMessageType.EVENT);
                 }
             }
         });

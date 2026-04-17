@@ -33,7 +33,7 @@ export class LLMSessionsService {
         let sessionCreationResult = await createAgentSession({
             tools: [readTool, bashTool],
             resourceLoader: this.loader,
-            sessionManager: SessionManager.inMemory(),
+            sessionManager: SessionManager.create(process.cwd()),
             authStorage: this.authStorage,
             modelRegistry: this.modelRegistry,
             //model: this.modelRegistry.find("google", "gemma3:270M-UD-Q4_K_XL")!

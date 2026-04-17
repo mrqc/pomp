@@ -1,8 +1,8 @@
 import path from "node:path";
+import type {IoStreamRead} from "naudiodon-no-segfault";
 import * as portAudio from "naudiodon-no-segfault";
 import * as wav from "wav";
 import {FileWriter} from "wav";
-import type {IoStreamRead} from "naudiodon-no-segfault";
 import fs from "fs-extra";
 import {fileURLToPath} from "url";
 import {SpeechToTextController} from "./SpeechToTextController.ts";
@@ -12,6 +12,7 @@ import {ClientServerSynchronizationService} from "../services/ClientServerSynchr
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
 import {TextToSpeechController} from "./TextToSpeechController.ts";
 import {AudioPlayingController} from "./AudioPlayingController.ts";
+import {type AgentsController, ConversationStatus} from "./AgentsController.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,27 +24,33 @@ export class AudioRecordingController {
     private static sampleRate = 16000;
     public static defaultRecordingDuration = 0.25;
     private readonly logger = new InternalLogger(__filename);
-    private readonly speechToText: SpeechToTextController;
-    private readonly audioMutex: Mutex;
+    private speechToText: SpeechToTextController | undefined;
+    private audioMutex: Mutex | undefined;
     private audioDevice: IoStreamRead | null = null;
     private currentWavFileWriter: FileWriter | null = null;
-    private readonly textToSpeech: TextToSpeechController | null = null;
+    private agentsController: AgentsController | null = null;
+    private textToSpeech: TextToSpeechController | null = null;
     private isRecording: boolean = false;
     private currentOutputFileName: string | null = null;
     public silentCount = 0;
-    private readonly audioPlaying: AudioPlayingController;
+    private audioPlaying: AudioPlayingController | undefined;
 
-    constructor(audioMutex: Mutex, speechToText: SpeechToTextController, textToSpeech: TextToSpeechController, audioPlaying: AudioPlayingController) {
+    constructor() {
         AudioRecordingController.cleanup();
+        fs.ensureDirSync(AudioRecordingController.RECORDINGS_DIR);
+    }
+    
+    async init(audioMutex: Mutex, 
+               speechToText: SpeechToTextController, 
+               textToSpeech: TextToSpeechController, 
+               audioPlaying: AudioPlayingController,
+               agentsController: AgentsController) {
         this.startRecording = this.startRecording.bind(this);
         this.textToSpeech = textToSpeech;
         this.audioMutex = audioMutex;
         this.speechToText = speechToText;
         this.audioPlaying = audioPlaying;
-        fs.ensureDirSync(AudioRecordingController.RECORDINGS_DIR);
-    }
-    
-    async init() {
+        this.agentsController = agentsController;
         await this.loadConfigsAndSubscribe();
     }
 
@@ -63,6 +70,19 @@ export class AudioRecordingController {
             this.clientServerSynchronization.sendGuiInfo("Default recording duration changed to " + AudioRecordingController.defaultRecordingDuration)
         });
     }
+    
+    private waitingForAdditionalInputOver(): boolean {
+        if (this.speechToText?.currentSessionId == undefined) {
+            return false;
+        }
+        if (this.agentsController?.getAgentSession(this.speechToText.currentSessionId)?.conversation == ConversationStatus.WAIT && this.silentCount < 3) {
+            return false;
+        }
+        if (this.agentsController?.getAgentSession(this.speechToText.currentSessionId)?.conversation == ConversationStatus.ONGOING && this.silentCount < 3) {
+            return false
+        }
+        return true;
+    }
 
     private initAudioDevice(): IoStreamRead | null {
         this.logger.info("Initializing Audio Device");
@@ -74,7 +94,7 @@ export class AudioRecordingController {
         let selectedDeviceId = -1;
         if (inputDevices.length === 0) {
             this.logger.error("No input audio devices found. Please check your system settings and permissions.");
-            this.audioMutex.release();
+            this.audioMutex!.release();
             return null;
         } else {
             selectedDeviceId = inputDevices[0]?.id ?? -1;
@@ -104,10 +124,12 @@ export class AudioRecordingController {
             }
             if (silent) {
                 this.logger.info('Silence detected in audio chunk');
-                this.logger.info("silenceCount = " + this.silentCount + " wantsToSay = " + this.textToSpeech?.wantsToSaySomething() + " isPlaying = " + this.audioPlaying.isPlaying)
+                this.logger.info("silenceCount = " + this.silentCount + " wantsToSay = " + this.textToSpeech?.wantsToSaySomething() + " isPlaying = " + this.audioPlaying!.isPlaying)
                 if (this.silentCount == 0) {
                     this.stopRecording();
-                } else if (this.textToSpeech?.wantsToSaySomething() && !this.audioPlaying.isPlaying) {
+                } else if (this.textToSpeech?.wantsToSaySomething() && !this.audioPlaying!.isPlaying) {
+                    this.stopRecording();
+                } else if (this.waitingForAdditionalInputOver()) {
                     this.stopRecording();
                 }
                 this.silentCount++;
@@ -126,12 +148,12 @@ export class AudioRecordingController {
     
     async startRecording() {
         this.logger.info("Acquire lock")
-        await this.audioMutex.acquire();
+        await this.audioMutex!.acquire();
         try {
             this.currentOutputFileName = path.resolve(AudioRecordingController.RECORDINGS_DIR, 'output' + Date.now() + '.wav');
             let audioIo = this.initAudioDevice();
             if (audioIo == null) {
-                this.audioMutex.release(); // Explicitly release if init fails and we acquired lock
+                this.audioMutex!.release(); // Explicitly release if init fails and we acquired lock
                 return;
             }
             if (this.currentWavFileWriter) {
@@ -145,7 +167,7 @@ export class AudioRecordingController {
             this.isRecording = true;
         } catch (error) {
             this.logger.error("Error in startRecording: " + error);
-            this.audioMutex.release();
+            this.audioMutex!.release();
         }
     }
     
@@ -160,12 +182,12 @@ export class AudioRecordingController {
                 if (this.currentOutputFileName == null) {
                     return;
                 }
-                this.speechToText.writeAudioFileToTextStream(this.currentOutputFileName);
+                this.speechToText!.writeAudioFileToTextStream(this.currentOutputFileName);
             });
             writer.end();
             this.currentWavFileWriter = null;
         }
-        this.audioMutex.release();
+        this.audioMutex!.release();
         await this.startRecording();
     }
 

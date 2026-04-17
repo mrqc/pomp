@@ -13,6 +13,7 @@ import {DatabaseConnectorService} from "./services/DatabaseConnectorService.ts";
 import {Configuration} from "./Configuration.ts";
 import {Tools} from "./Tools.ts";
 import {multiMcpClient} from "./mcp/client/MultiMCPClient.ts";
+import {JobsService} from "./services/JobsService.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,7 @@ let logger = new InternalLogger(__filename);
 const audioMutex = new Mutex();
 logger.info("Starting database connector")
 let configuration = new Configuration();
+let jobService = JobsService.getInstance();
 let databaseConnector = DatabaseConnectorService.getInstance();
 await databaseConnector.migrate();
 logger.info("Starting client/server synchronization")
@@ -31,34 +33,36 @@ let express: ExpressWrapperController = new ExpressWrapperController(configurati
 logger.info("Starting text to speech")
 let textToSpeech: TextToSpeechController = new TextToSpeechController();
 logger.info("Starting audio playing")
-let audioPlaying: AudioPlayingController = new AudioPlayingController(audioMutex);
+let audioPlaying: AudioPlayingController = new AudioPlayingController();
 logger.info("Agents controller starting")
-let agentsController: AgentsController = new AgentsController(textToSpeech);
+let agentsController: AgentsController = new AgentsController();
 logger.info("Starting speech to text")
-let speechToText: SpeechToTextController = new SpeechToTextController(agentsController);
+let speechToText: SpeechToTextController = new SpeechToTextController();
 logger.info("Starting audio recording")
-let audioRecording: AudioRecordingController = new AudioRecordingController(audioMutex, speechToText, textToSpeech, audioPlaying);
+let audioRecording: AudioRecordingController = new AudioRecordingController();
 logger.info("Starting MCP Server")
 
 logger.info("Starting environment...")
 
 async function startup() {
+    jobService.init(agentsController);
+    jobService.addAll(configuration.getConfig("jobs"));
     logger.info("Setting rootPath to " + process.cwd());
     multiMcpClient.rootPath = process.cwd();
     logger.info("Express listener");
     express.init();
     logger.info("Agents controller initializing")
-    await agentsController.init();
+    await agentsController.init(textToSpeech);
     logger.info("Audio recording")
-    await audioRecording.init();
+    await audioRecording.init(audioMutex, speechToText, textToSpeech, audioPlaying, agentsController);
     logger.info("Audio playing")
-    audioPlaying.init();
+    audioPlaying.init(audioMutex);
     logger.info("Text to speech")
     await textToSpeech.init();
     logger.info("Client/Server synchronization initializing")
     await clientServerSynchronization.init();
     logger.info("Speech to text initializing");
-    await speechToText.init();
+    await speechToText.init(audioRecording, agentsController);
     logger.info("MCP Server initialization")
     audioRecording.startRecording();
     textToSpeech.say("Hello!");

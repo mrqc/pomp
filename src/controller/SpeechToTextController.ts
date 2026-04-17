@@ -7,6 +7,7 @@ import {fileURLToPath} from "node:url";
 import {type AgentsController, AgentSessionMessageType, ConversationStatus} from "./AgentsController.ts";
 import {ClientServerSynchronizationService} from "../services/ClientServerSynchronizationService.ts";
 import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts";
+import type {AudioRecordingController} from "./AudioRecordingController.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,16 +28,18 @@ export class SpeechToTextController {
     private static splitOnWord: boolean = false;
     private readonly logger = new InternalLogger(__filename);
     public phrases: Phrase[] = [];
-    private readonly agentsController: AgentsController;
+    private agentsController: AgentsController | undefined;
     private isActivatedByKeyword: boolean = false;
-    private currentSessionId: string | null = null;
+    public currentSessionId: string | null = null;
+    private audioRecordingController: AudioRecordingController | null = null;
     
-    constructor(agentsController: AgentsController) {
+    constructor() {
         SpeechToTextController.cleanup();
-        this.agentsController = agentsController;
     }
     
-    async init() {
+    async init(audioRecording: AudioRecordingController, agentsController: AgentsController) {
+        this.audioRecordingController = audioRecording;
+        this.agentsController = agentsController;
         await this.loadConfigsAndSubscribe();
     }
 
@@ -117,7 +120,7 @@ export class SpeechToTextController {
                 this.logger.info("Activation via keyword in context window")
                 let currentContextWindow = this.getCurrentStreamText();
                 this.phrases = []
-                await this.agentsController.prompt(currentContextWindow, AgentSessionMessageType.USER_TEXT_INPUT, this.currentSessionId);
+                await this.agentsController!.prompt(currentContextWindow, AgentSessionMessageType.USER_TEXT_INPUT, this.currentSessionId);
             } else if ( !this.isActive()) {
                 this.logger.info("Cleaning up context window")
                 this.removeOutdatedPhrasesFromContextWindow();
@@ -131,7 +134,7 @@ export class SpeechToTextController {
         if (this.currentSessionId == null) {
             return false;
         }
-        let agentSession = this.agentsController.getAgentSession(this.currentSessionId);
+        let agentSession = this.agentsController!.getAgentSession(this.currentSessionId);
         if (agentSession == undefined) {
             return false;
         }
