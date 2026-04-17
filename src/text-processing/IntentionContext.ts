@@ -41,7 +41,7 @@ export class IntentionContextService {
         let contentIntention = this.getIntentionContent(intentions, "CONTENT");
         let waitIntention = this.getIntentionContent(intentions, "WAIT");
         let conversationIntention = this.getIntentionContent(intentions, "CONVERSATION");
-        let longTermMemoryIntention = this.getIntentionContent(intentions, "LONGTERMMEMORY");
+        let longTermMemoryIntention = this.getIntentionContent(intentions, "ENDURINGINFORMATION");
         
         let overallTextResponseContent = this.removeIntentionContents(resolvedTextContent);
         return {
@@ -64,8 +64,8 @@ export class IntentionContextService {
                 continue;
             }
             if (element.type === "text") {
-                if (element.text.includes("[/CONTENT]")) {
-                    element.text = element.text.replace("[/CONTENT]", imagesToConsolidate + "[/CONTENT]");
+                if (element.text.includes("</CONTENT>")) {
+                    element.text = element.text.replace("</CONTENT>", imagesToConsolidate + "</CONTENT>");
                     imagesToConsolidate = "";
                 } else {
                     element.text += imagesToConsolidate;
@@ -110,7 +110,7 @@ export class IntentionContextService {
     }
     
     private getIntentions(content: string): Intention[] {
-        const regex = /\[([a-zA-Z0-9_-]+)]([\s\S]*?)\[\/\1]/g;
+        const regex = /<([a-zA-Z0-9_-]+)>([\s\S]*?)<\/\1>/g;
 
         return Array.from(content.matchAll(regex), match => ({
             tagName: match[1],

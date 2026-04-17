@@ -303,7 +303,7 @@ export class AgentsController {
                 if (intentionContext.longTermMemoryIntention !== undefined 
                         && intentionContext.longTermMemoryIntention.text.trim() != "") {
                     try {
-                        this.appendToFile(intentionContext.longTermMemoryIntention.text, "LONGTERMMEMORY.md");
+                        this.appendToFile(intentionContext.longTermMemoryIntention.text, "ENDURINGINFORMATION.md");
                         console.log('File updated successfully.');
                     } catch {
                         console.log('Error writting to long term memory file.');
@@ -364,7 +364,9 @@ export class AgentsController {
             await this.getFileContent("OWNER.md") + "\n" +
             await this.getFileContent("SOUL.md") + "\n" +
             await this.getFileContent("AGENTS.md") + "\n" +
-            "Here is context information which is maybe needed: " + (await this.getFileContent("LONGTERMMEMORY.md"))
+            "Here is context information which is maybe needed: " 
+            + (await this.getFileContent("ENDURINGINFORMATION.md")
+            + (await this.getFileContent("VOLATILEINFORMATION.md")))
         );
         session.agent.steer({
             ...interimMessage,

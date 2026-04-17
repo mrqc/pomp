@@ -86,9 +86,6 @@ export class SpeechToTextController {
 
     async writeAudioFileToTextStream(outputFileName: string) {
         fs.ensureDirSync(SpeechToTextController.TRANSLATION_DIR);
-        if (!fs.existsSync(outputFileName) || fs.statSync(outputFileName).size === 0) {
-            return;
-        }
         await this.transformSpeechToIntermediaryOutput(outputFileName)
         await this.transformIntermediaryOutputToPhrases(outputFileName)
     }
@@ -116,6 +113,9 @@ export class SpeechToTextController {
     private async transformIntermediaryOutputToPhrases(outputFileName: string) {
         try {
             let text = await this.putTextIntoPhrases(outputFileName);
+            if (text == undefined) {
+                return;
+            }
             await this.clientServerSynchronization.setRecord("SpeechContext", "text", this.getCurrentStreamText());
             this.logger.info("transformation process length: " + text.length + " isActive " + this.isActive())
             if (this.currentStreamTextContainsActivationKeyword() || this.isActiveConversation()) {
@@ -147,6 +147,9 @@ export class SpeechToTextController {
 
     private async putTextIntoPhrases(outputFileName: string) {
         let jsonFile = outputFileName + '.json';
+        if (!fs.existsSync(jsonFile)) {
+            return undefined;
+        }
         const data = await fs.readJson(jsonFile);
         if ( !InternalLogger.isDebug()) {
             await fs.remove(jsonFile);
@@ -213,9 +216,11 @@ export class SpeechToTextController {
                     splitOnWord: SpeechToTextController.splitOnWord,
                 },
             });
-        } catch (error) {
+        } catch (error: any) {
             this.setInactive()
-            this.logger.error(error + "");
+            if (!error.message.includes("Operation failed: Transcription failed or produced no output.")) {
+                this.logger.error(error + "");
+            }
         }
     }
     

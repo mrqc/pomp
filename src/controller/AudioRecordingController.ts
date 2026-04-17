@@ -85,10 +85,10 @@ export class AudioRecordingController {
     }
 
     private initAudioDevice(): IoStreamRead | null {
-        this.logger.info("Initializing Audio Device");
         if (this.audioDevice != null) {
             return this.audioDevice;
         }
+        this.logger.info("Initializing Audio Device");
         const inputDevices = portAudio.getDevices().filter((d: any) => d.maxInputChannels > 0);
         this.logger.info("Available input devices: " + JSON.stringify(inputDevices));
         let selectedDeviceId = -1;
@@ -178,7 +178,9 @@ export class AudioRecordingController {
         const writer = this.currentWavFileWriter;
         if (writer) {
             writer.on('finish', async () => {
-                if (this.currentOutputFileName == null) {
+                if (this.currentOutputFileName == null 
+                        || !fs.existsSync(this.currentOutputFileName) 
+                        || fs.statSync(this.currentOutputFileName).size === 0) {
                     return;
                 }
                 this.speechToText!.writeAudioFileToTextStream(this.currentOutputFileName);
