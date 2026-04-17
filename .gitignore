@@ -35,4 +35,5 @@ yarn-debug.log*
 yarn-error.log*
 
 # software specific sensitive info stuff
-LONGTERMMEMORY.md
+ENDURINGINFORMATION.md
+VOLATILEINFORMATION.md
