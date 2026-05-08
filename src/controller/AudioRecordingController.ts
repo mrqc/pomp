@@ -13,6 +13,7 @@ import {DatabaseConnectorService} from "../services/DatabaseConnectorService.ts"
 import {TextToSpeechController} from "./TextToSpeechController.ts";
 import {AudioPlayingController} from "./AudioPlayingController.ts";
 import {type AgentsController, ConversationStatus} from "./AgentsController.ts";
+import {unlink} from "node:fs/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -125,11 +126,11 @@ export class AudioRecordingController {
             if (silent) {
                 this.logger.info("silenceCount = " + this.silentCount + " wantsToSay = " + this.textToSpeech?.wantsToSaySomething() + " isPlaying = " + this.audioPlaying!.isPlaying)
                 if (this.silentCount == 0) {
-                    this.stopRecording();
+                    this.stopRecording(silent);
                 } else if (this.textToSpeech?.wantsToSaySomething() && !this.audioPlaying!.isPlaying) {
-                    this.stopRecording();
+                    this.stopRecording(silent);
                 } else if (this.waitingForAdditionalInputOver()) {
-                    this.stopRecording();
+                    this.stopRecording(silent);
                 }
                 this.silentCount++;
             } else {
@@ -170,11 +171,15 @@ export class AudioRecordingController {
         }
     }
     
-    private async stopRecording() {
+    private async stopRecording(silent: boolean) {
         if (!this.isRecording) {
             return;
         }
         this.isRecording = false;
+        if ( !(silent && this.silentCount == 0)) {
+            await unlink(this.currentOutputFileName!);
+            return;
+        }
         const writer = this.currentWavFileWriter;
         if (writer) {
             writer.on('finish', async () => {
