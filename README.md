@@ -1,4 +1,4 @@
-# POMP — Voice Dialog Personal Assistant
+# POMP — Ambient Agent AI System
 
 ## What is POMP?
 
@@ -6,7 +6,7 @@
 
 [![POMP: The AI Agent That Lives in the Background](https://img.youtube.com/vi/WHHVK-p24pY/maxresdefault.jpg)](https://www.youtube.com/watch?v=WHHVK-p24pY)
 
-*POMP* is a headless (first) assistant run by voice. It has eyes and ears. It is my vision of the future interaction with AI agents.
+*POMP* is a headless (first) voice assistant and ambient agent AI system. It has eyes and ears. It is my vision of the future interaction with AI agents.
 POMP is there without seeing it. There is (at first) no GUI but controlled by your voice. This headless approach
 is an enabler to integrate AI seamless into our daily life. We have to rethink our interaction with computers.
 Maybe the future integration of software systems/AI was already defined in Start Trek, Star Wars and other Science

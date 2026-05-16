@@ -355,10 +355,12 @@ export class AgentsController {
                 }
             }
         };
+        // workaround message for alternating assistant and user message
         session.agent.steer({
             ...interimMessage,
             timestamp: Date.now()
         } as AssistantMessage);
+        // actual message
         await session.steer(
             await this.getFileContent("INTENTION.md") + "\n" +
             await this.getFileContent("OWNER.md") + "\n" +
@@ -368,10 +370,12 @@ export class AgentsController {
             + (await this.getFileContent("ENDURINGINFORMATION.md")
             + (await this.getFileContent("VOLATILEINFORMATION.md")))
         );
+        // workaround message for alternating assistant and user message
         session.agent.steer({
             ...interimMessage,
             timestamp: Date.now()
         } as AssistantMessage);
+        // workaround ends here
         this.logger.info("Steered session");
         return internalSession;
     }
